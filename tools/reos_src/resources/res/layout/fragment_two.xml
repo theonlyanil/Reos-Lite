@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:fab="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/moodfragment"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+        <ImageView
+            android:id="@+id/header"
+            android:background="@drawable/mood_header"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:layout_marginTop="10dp"/>
+        <ListView
+            android:id="@+id/list"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_below="@+id/header"/>
+    </RelativeLayout>
+    <com.getbase.floatingactionbutton.AddFloatingActionButton
+        android:id="@+id/normal_plus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        fab:fab_plusIconColor="@color/colorPrimary"
+        fab:layout_anchor="@+id/header"
+        fab:layout_anchorGravity="end|bottom"
+        fab:fab_colorNormal="@color/navtabselectedcolor"
+        fab:fab_colorPressed="@color/navtabselectedcolor"/>
+</android.support.design.widget.CoordinatorLayout>

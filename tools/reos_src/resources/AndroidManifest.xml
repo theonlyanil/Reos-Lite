@@ -1,0 +1,381 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    android:versionCode="9"
+    android:versionName="2.0"
+    package="com.cube26.iota.smartlite"
+    platformBuildVersionCode="23"
+    platformBuildVersionName="6.0-2704002">
+    <uses-sdk
+        android:minSdkVersion="18"
+        android:targetSdkVersion="23"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.BLUETOOTH"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
+    <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
+    <uses-permission android:name="android.permission.RECEIVE_SMS"/>
+    <uses-permission android:name="android.permission.READ_SMS"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.READ_CONTACTS"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.GET_ACCOUNTS"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COURSE_LOCATION"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.USE_CREDENTIALS"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
+    <uses-permission android:name="android.permission.WRITE_CONTACTS"/>
+    <uses-permission android:name="android.permission.WRITE_SMS"/>
+    <uses-permission android:name="android.permission.WRITE_CALENDAR"/>
+    <uses-permission android:name="android.permission.READ_CALL_LOG"/>
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <permission
+        android:name="com.cube26.iota.smartlite.permission.C2D_MESSAGE"
+        android:protectionLevel="signature"/>
+    <uses-permission android:name="com.cube26.iota.smartlite.permission.C2D_MESSAGE"/>
+    <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE"/>
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="true"/>
+    <uses-feature
+        android:name="android.hardware.camera.front"
+        android:required="false"/>
+    <uses-feature
+        android:name="android.hardware.camera.autofocus"
+        android:required="false"/>
+    <uses-feature
+        android:name="android.hardware.camera.flash"
+        android:required="false"/>
+    <uses-feature
+        android:name="android.hardware.screen.landscape"
+        android:required="false"/>
+    <uses-feature
+        android:name="android.hardware.wifi"
+        android:required="false"/>
+    <uses-permission android:name="android.permission.GET_TASKS"/>
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"/>
+    <uses-permission android:name="android.permission.DELETE_PACKAGES"/>
+    <uses-permission android:name="com.android.launcher.permission.INSTALL_SHORTCUT"/>
+    <uses-permission android:name="android.permission.INSTALL_PACKAGES"/>
+    <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"/>
+    <uses-permission android:name="android.permission.CLEAR_APP_CACHE"/>
+    <uses-permission android:name="android.permission.SET_PROCESS_LIMIT"/>
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES"/>
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+    <uses-feature
+        android:glEsVersion="0x20000"
+        android:required="true"/>
+    <application
+        android:theme="@style/IotaTheme"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:name="com.cube26.iota.smartlite.util.ApplicationController"
+        android:allowBackup="false"
+        android:largeHeap="true"
+        android:supportsRtl="true">
+        <meta-data
+            android:name="com.facebook.sdk.ApplicationId"
+            android:value="@string/facebook_app_id"/>
+        <activity
+            android:name="com.facebook.CustomTabActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="@string/fb_login_protocol_scheme"/>
+            </intent-filter>
+        </activity>
+        <activity
+            android:label="@string/app_name"
+            android:icon="@mipmap/ic_launcher"
+            android:name="com.cube26.iota.smartlite.util.SplashScreen"
+            android:screenOrientation="portrait"/>
+        <activity
+            android:theme="@style/Theme.Design.NoActionBar"
+            android:name="com.cube26.iota.smartlite.onboarding.OnBoardingActivity"
+            android:screenOrientation="portrait"/>
+        <activity
+            android:label="@string/app_name"
+            android:name="com.cube26.iota.smartlite.MainActivity"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"/>
+        <activity
+            android:label="@string/modeclass"
+            android:name="com.cube26.iota.smartlite.ModeCreation"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait"
+            android:configChanges="screenSize|orientation"
+            android:parentActivityName="com.cube26.iota.smartlite.MainActivity"/>
+        <activity
+            android:label="Update Mode"
+            android:name="com.cube26.iota.smartlite.UpdateMode"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait"
+            android:configChanges="screenSize|orientation"
+            android:parentActivityName="com.cube26.iota.smartlite.MainActivity"/>
+        <service
+            android:name="com.cube26.iota.smartlite.BluetoothLeService"
+            android:enabled="true"/>
+        <receiver android:name="com.cube26.iota.smartlite.Alerts.IncomingCallIReceiver">
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.PHONE_STATE"/>
+            </intent-filter>
+        </receiver>
+        <receiver android:name="com.cube26.iota.smartlite.Alerts.IncomingSmsReceiver">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SMS_RECEIVED"/>
+            </intent-filter>
+        </receiver>
+        <receiver android:name="com.cube26.iota.smartlite.BluetoothStateReceiver">
+            <intent-filter>
+                <action android:name="android.bluetooth.adapter.action.STATE_CHANGED"/>
+            </intent-filter>
+        </receiver>
+        <activity
+            android:name="com.cube26.iota.smartlite.AlertViews.AlertSpecificActivity"
+            android:screenOrientation="portrait"
+            android:configChanges="screenSize|orientation"
+            android:parentActivityName="com.cube26.iota.smartlite.MainActivity"/>
+        <activity
+            android:name="com.cube26.iota.smartlite.AlertViews.AlertSpecPropActivity"
+            android:screenOrientation="portrait"
+            android:configChanges="screenSize|orientation"
+            android:parentActivityName="com.cube26.iota.smartlite.AlertViews.AlertSpecificActivity"/>
+        <activity
+            android:name="com.cube26.iota.smartlite.AlertViews.EditAlertActivity"
+            android:screenOrientation="portrait"
+            android:configChanges="screenSize|orientation"
+            android:parentActivityName="com.cube26.iota.smartlite.AlertViews.AlertSpecificActivity"/>
+        <activity
+            android:name="com.cube26.iota.smartlite.AlertViews.FacebookAlertActivity"
+            android:screenOrientation="portrait"
+            android:configChanges="screenSize|orientation"
+            android:parentActivityName="com.cube26.iota.smartlite.AlertViews.AlertSpecificActivity"/>
+        <activity
+            android:name="com.cube26.iota.smartlite.Apps.SetScheduleActivity"
+            android:screenOrientation="portrait"
+            android:configChanges="screenSize|orientation"
+            android:parentActivityName="com.cube26.iota.smartlite.MainActivity"/>
+        <activity
+            android:name="com.cube26.iota.smartlite.util.Settings"
+            android:screenOrientation="portrait"
+            android:configChanges="screenSize|orientation"
+            android:parentActivityName="com.cube26.iota.smartlite.MainActivity"/>
+        <service
+            android:label="@string/app_name"
+            android:name="com.cube26.iota.smartlite.NotificationListener"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService"/>
+            </intent-filter>
+        </service>
+        <service android:name="com.cube26.iota.smartlite.GCMIntentService"/>
+        <activity
+            android:name="com.cube26.iota.smartlite.util.SupportPage"
+            android:screenOrientation="portrait"
+            android:parentActivityName="com.cube26.iota.smartlite.util.Settings"/>
+        <activity
+            android:name="com.cube26.iota.smartlite.util.LiteSettings"
+            android:screenOrientation="portrait"
+            android:parentActivityName="com.cube26.iota.smartlite.MainActivity"/>
+        <service
+            android:name="com.cube26.iota.smartlite.AutoScanConnectService"
+            android:enabled="true"/>
+        <activity
+            android:name="com.cube26.iota.smartlite.Apps.SetTimerActivity"
+            android:screenOrientation="portrait"
+            android:parentActivityName="com.cube26.iota.smartlite.MainActivity"/>
+        <service
+            android:name="com.cube26.iota.smartlite.util.DbHelperService"
+            android:exported="false"/>
+        <activity
+            android:name="com.cube26.iota.smartlite.Groups.CreateGroupActivity"
+            android:screenOrientation="portrait"
+            android:parentActivityName="com.cube26.iota.smartlite.MainActivity"/>
+        <receiver android:name="com.cube26.iota.smartlite.ScheduleNotificationAlertReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+            </intent-filter>
+        </receiver>
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version"/>
+        <activity
+            android:theme="@style/IotaTheme"
+            android:name="com.cube26.iota.smartlite.UserRegistration.UserRegistrationActivity"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity>
+        <activity
+            android:theme="@style/TranslucentActivity"
+            android:name="com.cube26.iota.smartlite.UserRegistration.EmailRegisterDetailsActivity"/>
+        <activity
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+            android:name="com.cube26.iota.smartlite.VirtualLite.TryVirtualReosLiteActivity"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="com.google.zxing.client.android.SCAN"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity>
+        <provider
+            android:name="com.google.android.gms.measurement.AppMeasurementContentProvider"
+            android:exported="false"
+            android:authorities="com.cube26.iota.smartlite.google_measurement_service"/>
+        <receiver
+            android:name="com.google.android.gms.measurement.AppMeasurementReceiver"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.measurement.UPLOAD"/>
+            </intent-filter>
+        </receiver>
+        <service
+            android:name="com.google.android.gms.measurement.AppMeasurementService"
+            android:enabled="true"
+            android:exported="false"/>
+        <activity
+            android:theme="@style/zxing_CaptureTheme"
+            android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            android:clearTaskOnLaunch="true"
+            android:stateNotNeeded="true"
+            android:screenOrientation="sensorLandscape"
+            android:windowSoftInputMode="stateAlwaysHidden"/>
+        <receiver android:name="com.android.apps.config.Config.UpdateConfig">
+            <intent-filter>
+                <action android:name="UPDATE_CONFIGURATION"/>
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE"/>
+            </intent-filter>
+        </receiver>
+        <receiver android:name="com.android.library.apptrack.receivers.AppInstallListener">
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.PACKAGE_ADDED"/>
+                <data android:scheme="package"/>
+            </intent-filter>
+        </receiver>
+        <receiver android:name="com.android.library.apptrack.receivers.AppUninstallListener">
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.PACKAGE_REMOVED"/>
+                <data android:scheme="package"/>
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name="com.android.library.appusage.receivers.AppUsageAlarmReceiver"
+            android:process=":remote"/>
+        <receiver
+            android:name="com.android.library.appusage.receivers.UsageTrackReceiver"
+            android:process=":remote"/>
+        <service android:name="com.android.library.appusage.usagetrack.DCService"/>
+        <receiver
+            android:label="NetworkChangeReceiver"
+            android:name="com.android.library.http.HTTPLibraryNetworkChangeReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE"/>
+            </intent-filter>
+        </receiver>
+        <service android:name="com.android.library.http.HTTPLibraryAlarmSchedulingService"/>
+        <service
+            android:name="com.android.library.rmnlibrary.RichMediaNotificationService"
+            android:exported="false"/>
+        <activity
+            android:theme="@android:style/Theme.Holo.Light"
+            android:label="Video Notification"
+            android:name="com.android.library.rmnlibrary.activity.RichMediaVideoActivity"
+            android:exported="true"/>
+        <activity
+            android:theme="@style/InAppNotifcationActivityStyle"
+            android:label="Video Notification"
+            android:name="com.android.library.rmnlibrary.activity.InAppNotificationActivity"
+            android:exported="true"/>
+        <activity
+            android:theme="@android:style/Theme.Holo.Light"
+            android:label="Video Notification"
+            android:name="com.android.library.rmnlibrary.activity.RichMediaYouTubeActivity"
+            android:exported="true"
+            android:screenOrientation="landscape"/>
+        <receiver
+            android:name="com.google.android.gms.gcm.GcmReceiver"
+            android:permission="com.google.android.c2dm.permission.SEND"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.c2dm.intent.RECEIVE"/>
+                <category android:name="com.android.library.rmnlibrary"/>
+            </intent-filter>
+        </receiver>
+        <service
+            android:name="com.android.library.rmnlibrary.GCMListenerService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.android.c2dm.intent.RECEIVE"/>
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.android.library.rmnlibrary.GCMInstanceIDListenerService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.android.gms.iid.InstanceID"/>
+            </intent-filter>
+        </service>
+        <service
+            android:name="com.android.library.rmnlibrary.GCMIntentService"
+            android:enabled="true"/>
+        <service
+            android:name="com.android.library.rmnlibrary.RMNRegistrationService"
+            android:enabled="true"
+            android:exported="false"/>
+        <receiver android:name="com.android.library.rmnlibrary.RMNNetworkChangeReceiver">
+            <intent-filter>
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE"/>
+            </intent-filter>
+        </receiver>
+        <receiver android:name="com.android.library.rmnlibrary.AppInstallListener">
+            <intent-filter android:priority="100">
+                <action android:name="android.intent.action.PACKAGE_INSTALL"/>
+                <action android:name="android.intent.action.PACKAGE_ADDED"/>
+                <action android:name="android.intent.action.PACKAGE_REMOVED"/>
+                <data android:scheme="package"/>
+            </intent-filter>
+        </receiver>
+        <service
+            android:name="com.android.library.deviceData.service.DeviceDataPostService"
+            android:enabled="true"/>
+        <receiver
+            android:name="com.android.library.userprofile.util.UserProfileLibraryAlarmReceiver"
+            android:process=":remote"/>
+        <receiver
+            android:name="com.android.library.userprofile.util.IncomingSmsReceiver"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SMS_RECEIVED"/>
+                <action android:name="android.provider.Telephony.SMS_DELIVER"/>
+            </intent-filter>
+        </receiver>
+        <activity
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:name="com.google.android.gms.auth.api.signin.internal.SignInHubActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"/>
+        <activity
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:name="com.facebook.FacebookActivity"
+            android:configChanges="screenSize|screenLayout|orientation|keyboardHidden|keyboard"/>
+        <activity android:name="com.facebook.CustomTabMainActivity"/>
+    </application>
+</manifest>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:padding="@dimen/default_view_padding"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <EditText
+        android:textSize="20sp"
+        android:textColor="@color/textColorPrimary"
+        android:gravity="center_vertical"
+        android:id="@+id/group_name"
+        android:padding="10dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/group_name_hint"
+        android:maxLines="1"
+        android:singleLine="true"
+        android:maxLength="15"
+        android:inputType="textFilter"
+        android:layout_marginEnd="10dp"/>
+    <ListView
+        android:id="@+id/saved_lite_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:choiceMode="multipleChoice"
+        android:layout_weight="1"/>
+    <Button
+        android:textSize="@dimen/default_button_text_size"
+        android:textColor="@color/createmood"
+        android:id="@+id/save_group"
+        android:background="@color/vibgreen"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/button_mode_save"/>
+</LinearLayout>
