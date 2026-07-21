@@ -3,7 +3,7 @@ const ReosProtocol = {
   CHARACTERISTIC_UUID: '0000fff3-0000-1000-8000-00805f9b34fb',
 
   /**
-   * Calculates the Reos checksum:
+   * Calculates the Reos checksum for 17-byte packets:
    * 1 + sum of payload bytes from index 2 to 13, modulo 256.
    */
   calculateChecksum(payload) {
@@ -15,10 +15,38 @@ const ReosProtocol = {
   },
 
   /**
-   * Returns the 17-byte Power ON command sequence.
+   * Calculates the checksum for 14-byte short packets (like Power ON/OFF):
+   * 1 + sum of payload bytes from index 2 to 10, modulo 256.
    */
-  getPowerOnPacket() {
-    return new Uint8Array([0x0f, 0x0d, 0x03, 0x00, 0xff, 0x2b, 0x1b, 0xd0, 0xa0, 0x01, 0x01, 0x00, 0x00, 0x00, 0xbb, 0xff, 0xff]);
+  calculateShortChecksum(payload) {
+    let sum = 1;
+    for (let i = 2; i <= 10; i++) {
+      sum += payload[i];
+    }
+    return sum & 0xFF;
+  },
+
+  /**
+   * Returns the 14-byte Power ON command sequence parameterized by active R, G, B, and Brightness.
+   * Matches Android app's bArr16: {15, 10, 13, 0, R, G, B, Bri, 5, 0, 0, Checksum, -1, -1}
+   */
+  getPowerOnPacket(r = 255, g = 255, b = 255, brightness = 208) {
+    const payload = new Uint8Array(14);
+    payload[0] = 0x0F;
+    payload[1] = 0x0A;
+    payload[2] = 0x0D; // Command 13 (Power Command)
+    payload[3] = 0x00;
+    payload[4] = r;
+    payload[5] = g;
+    payload[6] = b;
+    payload[7] = brightness;
+    payload[8] = 0x05; // Mode 5 = ON
+    payload[9] = 0x00;
+    payload[10] = 0x00;
+    payload[11] = this.calculateShortChecksum(payload);
+    payload[12] = 0xFF;
+    payload[13] = 0xFF;
+    return payload;
   },
 
   /**

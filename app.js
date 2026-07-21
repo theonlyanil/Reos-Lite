@@ -75,6 +75,57 @@ const btnClearLogs = document.getElementById('btnClearLogs');
 const btnCopyLogs = document.getElementById('btnCopyLogs');
 
 // ════════════════════════════════════════════════════════
+//  LOCAL PERSISTENCE (STATE STORE)
+// ════════════════════════════════════════════════════════
+
+function saveState() {
+  const state = {
+    currentTab: currentTab,
+    hexColor: nativeColorInput.value,
+    warmth: warmthSlider.value,
+    brightness: brightnessSlider.value
+  };
+  try {
+    localStorage.setItem('reos_state', JSON.stringify(state));
+  } catch (e) {}
+}
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem('reos_state');
+    if (!saved) return;
+    const state = JSON.parse(saved);
+    if (state.hexColor) {
+      nativeColorInput.value = state.hexColor;
+      colorHexText.textContent = state.hexColor.toUpperCase();
+      colorOrb.style.background = `radial-gradient(circle at 30% 30%, ${state.hexColor}, #000)`;
+    }
+    if (state.warmth) {
+      warmthSlider.value = state.warmth;
+      const val = parseInt(state.warmth);
+      let desc = 'Neutral';
+      if (val < 90) desc = `Cool White (${val})`;
+      else if (val > 110) desc = `Warm White (${val})`;
+      else desc = `Neutral White (${val})`;
+      warmthValText.textContent = desc;
+    }
+    if (state.brightness) {
+      brightnessSlider.value = state.brightness;
+      updateBrightnessLabel(parseInt(state.brightness));
+    }
+    if (state.currentTab === 'white') {
+      currentTab = 'white';
+      tabWhite.className = 'flex-grow flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all text-white bg-zinc-800';
+      tabRgb.className = 'flex-grow flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white';
+      panelWhite.classList.remove('hidden');
+      panelRgb.classList.add('hidden');
+    }
+  } catch (e) {
+    console.error('Failed to load state from localStorage', e);
+  }
+}
+
+// ════════════════════════════════════════════════════════
 //  INITIALIZATION & BROWSER COMPATIBILITY
 // ════════════════════════════════════════════════════════
 
@@ -91,8 +142,9 @@ setInterval(() => {
 
 log('Diagnostics Console ready. Waiting for connections...', 'info');
 
-// Auto reconnect on page load
+// Restore UI state from localStorage and start auto-reconnect
 window.addEventListener('DOMContentLoaded', () => {
+  loadState();
   autoReconnect();
 });
 
@@ -176,25 +228,6 @@ async function autoReconnect() {
   } catch (err) {
     log(`Registry lookup failed: ${err.message}`, 'error');
   }
-}
-
-function getCurrentStatePacket() {
-  const bri = parseInt(brightnessSlider.value);
-
-  if (currentTab === 'rgb') {
-    const hex = nativeColorInput.value;
-    const rgb = hexToRgb(hex);
-    if (rgb) {
-      const r = applyGamma(rgb.r);
-      const g = applyGamma(rgb.g);
-      const b = applyGamma(rgb.b);
-      return ReosProtocol.getColorPacket(r, g, b, bri);
-    }
-  } else if (currentTab === 'white') {
-    const warmth = parseInt(warmthSlider.value);
-    return ReosProtocol.getWhitePacket(bri, warmth);
-  }
-  return ReosProtocol.getPowerOnPacket();
 }
 
 async function connectToDevice(device) {
@@ -453,9 +486,10 @@ function updateBrightnessLabel(val) {
   brightnessValText.textContent = `${val} / 208 (${pct}%)`;
 }
 
-// Global dispatcher compiling inputs to correct BLE packets
+// Global dispatcher compiling inputs to correct BLE packets and persisting state
 function applyStateChange() {
   const bri = parseInt(brightnessSlider.value);
+  saveState();
 
   if (currentTab === 'rgb') {
     const hex = nativeColorInput.value;
@@ -484,9 +518,26 @@ function applyStateChange() {
 // ════════════════════════════════════════════════════════
 
 btnPowerOn.addEventListener('click', async () => {
-  log('Broadcasting Power ON packet...', 'info');
-  const packet = ReosProtocol.getPowerOnPacket();
-  await broadcastPacket(packet);
+  log('Broadcasting Power ON packet with active color state...', 'info');
+  const bri = parseInt(brightnessSlider.value);
+  
+  if (currentTab === 'rgb') {
+    const hex = nativeColorInput.value;
+    const rgb = hexToRgb(hex);
+    if (rgb) {
+      const r = applyGamma(rgb.r);
+      const g = applyGamma(rgb.g);
+      const b = applyGamma(rgb.b);
+      // Construct Command 13 (0x0D) Power ON packet parameterized with saved R, G, B
+      const packet = ReosProtocol.getPowerOnPacket(r, g, b, bri);
+      await broadcastPacket(packet);
+    }
+  } else {
+    // White Mode Power ON
+    const packet = ReosProtocol.getPowerOnPacket(255, 255, 255, bri);
+    await broadcastPacket(packet);
+    applyStateChange();
+  }
 });
 
 btnPowerOff.addEventListener('click', async () => {
