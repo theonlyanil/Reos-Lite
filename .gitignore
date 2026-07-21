@@ -24,13 +24,24 @@ build/
 *.local
 
 # Capacitor / Mobile build outputs
-reos-mobile/node_modules/
-reos-mobile/dist/
-reos-mobile/android/app/build/
+**/node_modules/
+**/dist/
+**/dist-ssr/
+**/build/
 reos-mobile/android/.gradle/
-reos-mobile/android/captures/
+reos-mobile/android/local.properties
+reos-mobile/android/app/build/
+reos-mobile/android/app/src/main/assets/public/
+reos-mobile/android/app/src/main/assets/capacitor.config.json
+reos-mobile/android/app/src/main/assets/capacitor.plugins.json
+reos-mobile/android/capacitor-cordova-android-plugins/
+reos-mobile/ios/App/App/public/
+reos-mobile/ios/App/App/capacitor.config.json
 reos-mobile/ios/App/Pods/
-reos-mobile/ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
+reos-mobile/ios/App/App.xcworkspace/
+reos-mobile/ios/App/*.xcworkspace/
+reos-mobile/ios/capacitor-cordova-ios-plugins/
+**/xcuserdata/
 
 # Environment and local configs
 .env
