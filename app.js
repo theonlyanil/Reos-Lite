@@ -192,7 +192,7 @@ btnPair.addEventListener('click', async () => {
   log('Triggering Web Bluetooth pairing chooser...', 'info');
   try {
     const device = await navigator.bluetooth.requestDevice({
-      filters: [{ namePrefix: 'Lite-' }],
+      acceptAllDevices: true, // TEMP DIAGNOSTIC: restore filters: [{ namePrefix: 'Lite-' }]
       optionalServices: [ReosProtocol.SERVICE_UUID]
     });
     log(`Selected bulb: ${device.name}`, 'info');
