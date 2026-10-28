@@ -11,6 +11,7 @@
   import { onMount } from 'svelte';
 
   import { Capacitor } from '@capacitor/core';
+  import { Preferences } from '@capacitor/preferences';
   import { bleManager, type DeviceInfo, type LogEntry } from './lib/bluetooth';
   import { ReosProtocol } from './lib/protocol';
   import { applyGamma } from './lib/gamma';
@@ -26,12 +27,14 @@
   let partyInterval: any = null;
 
   let isConsoleOpen = false;
+  let isStateLoaded = false;
 
-  onMount(() => {
+  async function ensureStateLoaded() {
+    if (isStateLoaded) return;
     try {
-      const saved = localStorage.getItem('reos_state');
-      if (saved) {
-        const state = JSON.parse(saved);
+      const { value } = await Preferences.get({ key: 'reos_state' });
+      if (value) {
+        const state = JSON.parse(value);
         if (state.currentTab) currentTab = state.currentTab;
         if (state.hexColor) hexColor = state.hexColor;
         if (state.warmth) warmth = state.warmth;
@@ -39,13 +42,22 @@
       }
     } catch (e) {
       console.error('Failed to load state', e);
+    } finally {
+      isStateLoaded = true;
     }
+  }
+
+  onMount(async () => {
+    await ensureStateLoaded();
   });
 
-  function saveState() {
+  async function saveState() {
     try {
       const state = { currentTab, hexColor, warmth, brightness };
-      localStorage.setItem('reos_state', JSON.stringify(state));
+      await Preferences.set({
+        key: 'reos_state',
+        value: JSON.stringify(state)
+      });
     } catch (e) {
       console.error('Failed to save state', e);
     }
@@ -79,11 +91,8 @@
               devices = [...devices, device];
             }
             setTimeout(async () => {
+              await ensureStateLoaded();
               await applyStateChange();
-              setTimeout(async () => {
-                const savePacket = ReosProtocol.getSaveSettingsPacket(true);
-                await bleManager.writePacket(devices, savePacket, addLog);
-              }, 200);
             }, 600);
           },
           addLog
@@ -135,11 +144,9 @@
             devices = [...devices, connectedDev];
           }
           setTimeout(async () => {
+            await ensureStateLoaded();
             await applyStateChange();
-            setTimeout(async () => {
-              const savePacket = ReosProtocol.getSaveSettingsPacket(true);
-              await bleManager.writePacket(devices, savePacket, addLog);
-            }, 200);
+            triggerPersistentSave();
           }, 600);
         },
         addLog
@@ -182,30 +189,42 @@
     }
   }
 
+  let saveSettingsTimeout: any = null;
+
+  function triggerPersistentSave() {
+    if (saveSettingsTimeout) clearTimeout(saveSettingsTimeout);
+    saveSettingsTimeout = setTimeout(async () => {
+      if (devices.length > 0) {
+        const packet = ReosProtocol.getSaveSettingsPacket(true);
+        await bleManager.writePacket(devices, packet, addLog);
+        // Repeat once: write-without-response can be dropped by the bulb
+        await new Promise(r => setTimeout(r, 300));
+        await bleManager.writePacket(devices, packet, addLog);
+      }
+    }, 600);
+  }
+
   async function handleColorChange(hex: string) {
     stopParty();
     hexColor = hex;
     await applyStateChange();
-    saveState();
-    const savePacket = ReosProtocol.getSaveSettingsPacket(true);
-    await bleManager.writePacket(devices, savePacket, addLog);
+    await saveState();
+    triggerPersistentSave();
   }
 
   async function handleWarmthChange(val: number) {
     stopParty();
     warmth = val;
     await applyStateChange();
-    saveState();
-    const savePacket = ReosProtocol.getSaveSettingsPacket(true);
-    await bleManager.writePacket(devices, savePacket, addLog);
+    await saveState();
+    triggerPersistentSave();
   }
 
   async function handleBrightnessChange(val: number) {
     brightness = val;
     await applyStateChange();
-    saveState();
-    const savePacket = ReosProtocol.getSaveSettingsPacket(true);
-    await bleManager.writePacket(devices, savePacket, addLog);
+    await saveState();
+    triggerPersistentSave();
   }
 
   function handlePowerOn() {
@@ -215,12 +234,14 @@
       if (rgb) {
         const packet = ReosProtocol.getPowerOnPacket(applyGamma(rgb.r), applyGamma(rgb.g), applyGamma(rgb.b), brightness);
         bleManager.writePacket(devices, packet, addLog);
+        triggerPersistentSave();
       }
     } else {
       const packet = ReosProtocol.getPowerOnPacket(255, 255, 255, brightness);
       bleManager.writePacket(devices, packet, addLog);
       setTimeout(() => {
         applyStateChange();
+        triggerPersistentSave();
       }, 300);
     }
   }
