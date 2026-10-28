@@ -98,7 +98,7 @@ function loadState() {
     if (state.hexColor) {
       nativeColorInput.value = state.hexColor;
       colorHexText.textContent = state.hexColor.toUpperCase();
-      colorOrb.style.background = `radial-gradient(circle at 30% 30%, ${state.hexColor}, #000)`;
+      setOrb(state.hexColor);
     }
     if (state.warmth) {
       warmthSlider.value = state.warmth;
@@ -115,8 +115,7 @@ function loadState() {
     }
     if (state.currentTab === 'white') {
       currentTab = 'white';
-      tabWhite.className = 'flex-grow flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all text-white bg-zinc-800';
-      tabRgb.className = 'flex-grow flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white';
+      setTabUI('white');
       panelWhite.classList.remove('hidden');
       panelRgb.classList.add('hidden');
     }
@@ -192,7 +191,7 @@ btnPair.addEventListener('click', async () => {
   log('Triggering Web Bluetooth pairing chooser...', 'info');
   try {
     const device = await navigator.bluetooth.requestDevice({
-      acceptAllDevices: true, // TEMP DIAGNOSTIC: restore filters: [{ namePrefix: 'Lite-' }]
+      filters: [{ namePrefix: 'Lite-' }],
       optionalServices: [ReosProtocol.SERVICE_UUID]
     });
     log(`Selected bulb: ${device.name}`, 'info');
@@ -295,14 +294,17 @@ function renderDeviceItem(info) {
   if (placeholder) placeholder.remove();
 
   const item = document.createElement('div');
-  item.className = 'flex justify-between items-center bg-zinc-900/60 p-3.5 rounded-xl border border-white/5';
+  item.className = 'device-row';
   item.id = `dev-${info.id}`;
   item.innerHTML = `
-    <div class="flex flex-col gap-0.5">
-      <span class="text-xs font-semibold text-white">${info.name}</span>
-      <span class="text-[10px] text-zinc-500">Connected ∙ Write Endpoint: fff3</span>
+    <div class="flex items-center gap-3 min-w-0">
+      <span class="dot"></span>
+      <div class="flex flex-col min-w-0">
+        <span class="text-sm font-semibold text-white truncate">${info.name}</span>
+        <span class="text-[10px] text-zinc-500">Connected</span>
+      </div>
     </div>
-    <button class="text-xs font-semibold text-accent-red hover:text-accent-red-hover px-2 py-1 rounded" onclick="disconnectBulb('${info.id}')">Disconnect</button>
+    <button class="link-danger" onclick="disconnectBulb('${info.id}')">Remove</button>
   `;
   deviceList.appendChild(item);
 }
@@ -324,12 +326,12 @@ window.disconnectBulb = function(id) {
 
 function updateHeaderStatus() {
   const count = connectedDevices.size;
-  activeCountText.textContent = `${count} Bulb${count !== 1 ? 's' : ''} Linked`;
+  activeCountText.textContent = `${count} bulb${count !== 1 ? 's' : ''}`;
   
   if (count > 0) {
-    statusDot.className = 'w-2.5 h-2.5 bg-accent-green rounded-full shadow-lg shadow-accent-green/40 animate-pulse';
+    statusDot.className = 'w-2 h-2 bg-accent-green rounded-full shadow-lg shadow-accent-green/40 animate-pulse';
   } else {
-    statusDot.className = 'w-2.5 h-2.5 bg-zinc-600 rounded-full';
+    statusDot.className = 'w-2 h-2 bg-zinc-600 rounded-full';
   }
 }
 
@@ -356,10 +358,9 @@ async function broadcastPacket(packet) {
 tabRgb.addEventListener('click', () => {
   if (currentTab === 'rgb') return;
   currentTab = 'rgb';
+  setTabUI('rgb');
   
   // Update Tab Styling using Tailwind
-  tabRgb.className = 'flex-grow flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all text-white bg-zinc-800';
-  tabWhite.className = 'flex-grow flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white';
   
   panelRgb.classList.remove('hidden');
   panelWhite.classList.add('hidden');
@@ -371,10 +372,9 @@ tabRgb.addEventListener('click', () => {
 tabWhite.addEventListener('click', () => {
   if (currentTab === 'white') return;
   currentTab = 'white';
+  setTabUI('white');
   
   // Update Tab Styling using Tailwind
-  tabWhite.className = 'flex-grow flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all text-white bg-zinc-800';
-  tabRgb.className = 'flex-grow flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white';
   
   panelWhite.classList.remove('hidden');
   panelRgb.classList.add('hidden');
@@ -387,6 +387,15 @@ tabWhite.addEventListener('click', () => {
 // ════════════════════════════════════════════════════════
 //  RGB CONTROLS & PARSING
 // ════════════════════════════════════════════════════════
+
+function setTabUI(tab) {
+  tabRgb.classList.toggle('active', tab === 'rgb');
+  tabWhite.classList.toggle('active', tab === 'white');
+}
+
+function setOrb(hex) {
+  document.documentElement.style.setProperty('--glow', hex);
+}
 
 function hexToRgb(hex) {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -405,7 +414,7 @@ nativeColorInput.addEventListener('input', (event) => {
   stopPartyMode();
   const hex = event.target.value;
   colorHexText.textContent = hex.toUpperCase();
-  colorOrb.style.background = `radial-gradient(circle at 30% 30%, ${hex}, #000)`;
+  setOrb(hex);
   applyStateChange();
 });
 
@@ -426,7 +435,7 @@ presetBlue.addEventListener('click', () => {
 function updateColorWheel(hex) {
   nativeColorInput.value = hex;
   colorHexText.textContent = hex.toUpperCase();
-  colorOrb.style.background = `radial-gradient(circle at 30% 30%, ${hex}, #000)`;
+  setOrb(hex);
   applyStateChange();
 }
 
@@ -562,7 +571,7 @@ function togglePartyMode() {
     log('Party Mode disabled.', 'info');
   } else {
     log('Party Mode enabled! Cycling HSL spectrum...', 'success');
-    btnParty.className = 'w-full flex items-center justify-center gap-2 py-3 px-4 text-xs font-bold text-white bg-accent-purple rounded-xl transition-all shadow-lg shadow-accent-purple/30 active:scale-[0.98]';
+    btnParty.classList.add('on');
     btnParty.querySelector('span').textContent = 'Party Mode: ON';
     
     let hue = 0;
@@ -581,7 +590,7 @@ function togglePartyMode() {
       
       const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
       colorHexText.textContent = hex;
-      colorOrb.style.background = `radial-gradient(circle at 30% 30%, ${hex}, #000)`;
+      setOrb(hex);
       nativeColorInput.value = hex;
     }, 200);
   }
@@ -591,7 +600,7 @@ function stopPartyMode() {
   if (partyIntervalId) {
     clearInterval(partyIntervalId);
     partyIntervalId = null;
-    btnParty.className = 'w-full flex items-center justify-center gap-2 py-3 px-4 text-xs font-bold text-accent-purple bg-accent-purple/10 hover:bg-accent-purple/15 border border-accent-purple/20 rounded-xl transition-all';
+    btnParty.classList.remove('on');
     btnParty.querySelector('span').textContent = 'Party Mode: OFF';
   }
 }

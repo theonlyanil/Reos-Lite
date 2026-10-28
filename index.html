@@ -2,247 +2,171 @@
 <html lang="en" class="h-full bg-zinc-950">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#09090b">
   <title>Reos Lite Control Center</title>
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts Inter -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Custom Slider CSS Override -->
   <link rel="stylesheet" href="style.css">
   <script>
     tailwind.config = {
       theme: {
         extend: {
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-          },
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
           colors: {
-            accent: {
-              blue: '#0a84ff',
-              green: '#30d158',
-              red: '#ff453a',
-              purple: '#bf5af2',
-            }
+            accent: { blue: '#0a84ff', green: '#30d158', red: '#ff453a', purple: '#bf5af2' }
           }
         }
       }
     }
   </script>
 </head>
-<body class="min-h-full flex flex-col items-center justify-start p-4 md:p-6 text-white font-sans selection:bg-accent-blue selection:text-white">
+<body class="min-h-full text-white font-sans selection:bg-accent-blue">
+  <div class="ambient" aria-hidden="true"></div>
 
-  <div class="w-full max-w-4xl flex flex-col gap-6">
-    <!-- Web Bluetooth Error Banner -->
-    <div id="compatBanner" class="hidden bg-accent-red/20 border border-accent-red text-red-200 px-4 py-3.5 rounded-2xl text-sm leading-relaxed items-center gap-3 shadow-lg shadow-accent-red/10">
-      <svg class="w-5 h-5 text-accent-red shrink-0 fill-current" viewBox="0 0 24 24">
-        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-      </svg>
-      <div>
-        <strong class="font-semibold text-white">Browser Unsupported:</strong> Web Bluetooth is not supported. Use Google Chrome or Microsoft Edge on a secure HTTPS connection or localhost.
-      </div>
+  <main class="relative w-full max-w-5xl mx-auto px-4 pt-4 pb-10 flex flex-col gap-4 md:gap-5" style="padding-top: max(1rem, env(safe-area-inset-top));">
+
+    <!-- Compatibility banner -->
+    <div id="compatBanner" class="hidden bg-accent-red/15 border border-accent-red/40 text-red-200 px-4 py-3 rounded-2xl text-sm leading-relaxed items-center gap-3">
+      <svg class="w-5 h-5 text-accent-red shrink-0 fill-current" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+      <div><strong class="font-semibold text-white">Browser unsupported.</strong> Use Chrome or Edge over HTTPS to use Web Bluetooth.</div>
     </div>
 
-    <!-- Header Panel -->
-    <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 bg-zinc-900/90 border border-white/5 rounded-3xl backdrop-blur-xl shadow-2xl gap-4">
-      <div class="flex items-center gap-3.5">
-        <div class="flex items-center justify-center w-11 h-11 bg-gradient-to-tr from-accent-blue to-accent-purple rounded-xl shadow-lg shadow-accent-blue/30">
-          <svg class="w-5.5 h-5.5 text-white fill-current" viewBox="0 0 24 24">
-            <path d="M7 22h10v-2H7v2zm5-20C7.86 2 4.5 5.36 4.5 9.5c0 2.82 1.55 5.27 3.86 6.55L9 20h6l.64-3.95c2.31-1.28 3.86-3.73 3.86-6.55C19.5 5.36 16.14 2 12 2zm1.9 13H10.1l-.32-2h4.44l-.32 2zm1.87-3.9c-.43.52-.77 1.13-.97 1.8H9.2c-.2-.67-.54-1.28-.97-1.8-1.54-1.86-1.54-4.54 0-6.4 1.5-1.82 4.46-2.12 6.33-.67s2.12 4.46.67 6.33c-.23.29-.49.56-.83.74z"/>
-          </svg>
+    <!-- Header -->
+    <header class="flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="logo-tile">
+          <svg class="w-5 h-5 text-white fill-current" viewBox="0 0 24 24"><path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/></svg>
         </div>
-        <div>
-          <h1 class="text-xl font-bold tracking-tight text-white sm:text-2xl">Reos Control Center</h1>
-          <p class="text-xs text-zinc-400 font-medium">Next-Gen BLE Smart Bulb Controller</p>
+        <div class="min-w-0">
+          <h1 class="text-lg font-bold tracking-tight leading-tight truncate">Reos Lite</h1>
+          <p class="text-[11px] text-zinc-400 font-medium">BLE smart bulb control</p>
         </div>
       </div>
-      <div class="flex items-center gap-4 self-stretch sm:self-auto justify-between border-t border-white/5 pt-3 sm:pt-0 sm:border-0">
-        <div class="text-sm font-semibold tracking-wider tabular-nums text-zinc-400 pr-4 border-r border-white/5" id="clock">00:00:00</div>
-        <div class="flex items-center gap-2 px-3.5 py-1.5 bg-white/[0.03] border border-white/10 rounded-full text-xs font-semibold text-zinc-200">
-          <div class="w-2.5 h-2.5 bg-zinc-500 rounded-full transition-all duration-500" id="statusDot"></div>
-          <span id="activeCountText">0 Bulbs Linked</span>
-        </div>
+      <div class="status-pill">
+        <span class="w-2 h-2 bg-zinc-600 rounded-full" id="statusDot"></span>
+        <span id="activeCountText">0 bulbs</span>
+        <span id="clock" class="hidden">00:00:00</span>
       </div>
     </header>
 
-    <!-- Main Dashboard Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      
-      <!-- Column 1: Device Linker -->
-      <div class="flex flex-col gap-6">
-        <section class="bg-zinc-900/40 border border-white/5 rounded-3xl p-5 md:p-6 flex flex-col gap-5 shadow-xl">
-          <h2 class="flex items-center gap-2.5 text-base font-semibold text-zinc-200 border-b border-white/5 pb-3">
-            <svg class="w-5 h-5 text-accent-blue fill-current" viewBox="0 0 24 24">
-              <path d="M17.71 7.71L12 2h-1v7.59L6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 11 14.41V22h1l5.71-5.71-4.3-4.29 4.3-4.29zM13 5.83l1.88 1.88L13 9.59V5.83zm0 12.34v-3.76l1.88 1.88L13 18.17z"/>
-            </svg>
-            Device Management
-          </h2>
-          
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <button class="btn flex items-center justify-center gap-1.5 py-3 px-4 text-xs font-bold text-white bg-accent-blue hover:bg-accent-blue/90 active:scale-[0.98] rounded-xl transition-all" id="btnPair">
-              <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-              </svg>
-              Pair Bulb
-            </button>
-            <button class="btn flex items-center justify-center gap-1.5 py-3 px-4 text-xs font-bold text-white bg-zinc-800 hover:bg-zinc-700 active:scale-[0.98] rounded-xl transition-all border border-white/5" id="btnAutoConnect">
-              <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-              </svg>
-              Auto-Reconnect
-            </button>
-            <button class="btn flex items-center justify-center gap-1.5 py-3 px-4 text-xs font-bold text-accent-red bg-accent-red/10 hover:bg-accent-red/20 border border-accent-red/20 active:scale-[0.98] rounded-xl transition-all" id="btnDisconnectAll">
-              <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                <path d="M13 3h-2v10h2V3zm4.78 2.22l-1.4 1.4C17.7 7.77 18.5 9.79 18.5 12c0 3.59-2.91 6.5-6.5 6.5s-6.5-2.91-6.5-6.5c0-2.21.8-4.23 2.12-5.38l-1.4-1.4C4.24 7.22 3 9.47 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.53-1.24-4.78-3.22-6.78z"/>
-              </svg>
-              Disconnect
-            </button>
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-5 items-start">
+
+      <!-- Devices -->
+      <section class="card md:col-span-2 flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <h2 class="card-title">Bulbs</h2>
+          <button class="link-danger" id="btnDisconnectAll">Disconnect all</button>
+        </div>
+
+        <div class="flex flex-col gap-2" id="deviceList">
+          <div class="flex flex-col items-center gap-2 text-zinc-500 text-xs text-center py-6" id="listPlaceholder">
+            <svg class="w-8 h-8 text-zinc-700 fill-current" viewBox="0 0 24 24"><path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/></svg>
+            <span>No bulbs connected yet.<br>Add a <b class="text-zinc-300">Lite-</b> bulb to get started.</span>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <button class="btn-primary" id="btnPair">
+            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            Add new bulb
+          </button>
+          <button class="btn-ghost" id="btnAutoConnect">
+            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.74 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+            Reconnect saved bulbs
+          </button>
+        </div>
+      </section>
+
+      <!-- Controls -->
+      <section class="card md:col-span-3 flex flex-col gap-5">
+        <div class="flex items-center justify-between">
+          <h2 class="card-title">Controls</h2>
+          <div class="segmented segmented-power">
+            <button id="btnPowerOn" class="seg-on">On</button>
+            <button id="btnPowerOff" class="seg-off">Off</button>
+          </div>
+        </div>
+
+        <!-- Mode tabs -->
+        <div class="segmented">
+          <button class="seg active" id="tabRgb">Color</button>
+          <button class="seg" id="tabWhite">White</button>
+        </div>
+
+        <!-- RGB -->
+        <div class="flex flex-col gap-5" id="panelRgb">
+          <div class="relative mx-auto w-44 h-44">
+            <div class="color-orb w-full h-full rounded-full flex flex-col items-center justify-center gap-0.5" id="colorOrb">
+              <span class="text-[9px] uppercase tracking-widest text-white/70 font-semibold">Tap to pick</span>
+              <span class="text-sm font-extrabold text-white tracking-wide" id="colorHexText">#FF3B30</span>
+            </div>
+            <input type="color" id="nativeColorInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer rounded-full" value="#ff3b30" aria-label="Pick color">
           </div>
 
-          <div class="flex flex-col gap-2 p-3 bg-zinc-950/40 rounded-xl border border-white/5 min-h-[140px]" id="deviceList">
-            <!-- Active devices dynamically rendered here -->
-            <div class="flex flex-col items-center justify-center gap-3.5 text-zinc-500 text-xs text-center py-8" id="listPlaceholder">
-              <svg class="w-7 h-7 text-zinc-700 fill-current" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-              </svg>
-              <span>No bulbs linked.<br>Click "Pair Bulb" or "Auto-Reconnect" to scan.</span>
+          <div class="flex flex-col gap-2">
+            <span class="label">Presets</span>
+            <div class="grid grid-cols-3 gap-2">
+              <button class="chip" id="presetRed"><i style="background:#ff3b30"></i>Red</button>
+              <button class="chip" id="presetGreen"><i style="background:#34c759"></i>Green</button>
+              <button class="chip" id="presetBlue"><i style="background:#007aff"></i>Blue</button>
             </div>
           </div>
-        </section>
-      </div>
 
-      <!-- Column 2: Dashboard controls -->
-      <div class="flex flex-col gap-6">
-        <section class="bg-zinc-900/40 border border-white/5 rounded-3xl p-5 md:p-6 flex flex-col gap-5 shadow-xl">
-          <h2 class="flex items-center gap-2.5 text-base font-semibold text-zinc-200 border-b border-white/5 pb-3">
-            <svg class="w-5 h-5 text-accent-blue fill-current" viewBox="0 0 24 24">
-              <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/>
-            </svg>
-            Group Control Console
-          </h2>
+          <button class="party-btn" id="btnParty">
+            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>
+            <span>Party Mode: OFF</span>
+          </button>
+        </div>
 
-          <div class="flex flex-col gap-5">
-            <!-- Power Control Buttons -->
-            <div class="flex gap-3">
-              <button class="btn flex-1 py-3 px-4 text-xs font-bold text-white bg-gradient-to-tr from-accent-green to-green-700 rounded-xl transition-all shadow-lg shadow-accent-green/10 active:scale-[0.98] flex items-center justify-center gap-2" id="btnPowerOn">
-                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                  <path d="M13 3h-2v10h2V3zm4.78 2.22l-1.4 1.4C17.7 7.77 18.5 9.79 18.5 12c0 3.59-2.91 6.5-6.5 6.5s-6.5-2.91-6.5-6.5c0-2.21.8-4.23 2.12-5.38l-1.4-1.4C4.24 7.22 3 9.47 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.53-1.24-4.78-3.22-6.78z"/>
-                </svg>
-                Power ON
-              </button>
-              <button class="btn flex-1 py-3 px-4 text-xs font-bold text-accent-red bg-accent-red/10 border border-accent-red/25 hover:bg-accent-red/20 active:scale-[0.98] rounded-xl transition-all flex items-center justify-center gap-2" id="btnPowerOff">
-                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                  <path d="M13 3h-2v10h2V3zm4.78 2.22l-1.4 1.4C17.7 7.77 18.5 9.79 18.5 12c0 3.59-2.91 6.5-6.5 6.5s-6.5-2.91-6.5-6.5c0-2.21.8-4.23 2.12-5.38l-1.4-1.4C4.24 7.22 3 9.47 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.53-1.24-4.78-3.22-6.78z"/>
-                </svg>
-                Power OFF
-              </button>
+        <!-- White -->
+        <div class="flex flex-col gap-5 hidden" id="panelWhite">
+          <div class="panel-inset flex flex-col gap-3">
+            <div class="flex justify-between text-xs font-semibold">
+              <span class="text-zinc-400">Temperature</span>
+              <span class="text-white" id="warmthValText">Neutral (100)</span>
             </div>
-
-            <!-- Tab Navigation (RGB vs White Mode) -->
-            <div class="flex bg-zinc-950 p-1 rounded-xl border border-white/5">
-              <button class="flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all text-white bg-zinc-800" id="tabRgb">RGB Color</button>
-              <button class="flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all text-zinc-400 hover:text-white" id="tabWhite">White Light</button>
+            <div class="flex items-center gap-3">
+              <span class="text-base select-none">❄️</span>
+              <input type="range" class="slider warmth-slider flex-grow" id="warmthSlider" min="0" max="200" value="100">
+              <span class="text-base select-none">🔥</span>
             </div>
-
-            <!-- RGB Mode Panel -->
-            <div class="flex flex-col gap-5" id="panelRgb">
-              <div class="flex flex-col items-center justify-center relative my-3">
-                <div class="color-orb w-32 h-32 rounded-full flex flex-col items-center justify-center gap-1 cursor-pointer" id="colorOrb" style="background: radial-gradient(circle at 30% 30%, #ff3b30, #000);">
-                  <span class="text-[9px] uppercase tracking-wider text-white/60 font-semibold drop-shadow-md">Color</span>
-                  <span class="color-orb-value text-xs font-extrabold text-white drop-shadow-md" id="colorHexText">#FF3B30</span>
-                </div>
-                <input type="color" id="nativeColorInput" class="absolute opacity-0 w-32 h-32 cursor-pointer rounded-full" value="#ff3b30">
-              </div>
-
-              <!-- Quick RGB Colors -->
-              <div class="flex flex-col gap-2">
-                <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">Quick Presets</span>
-                <div class="grid grid-cols-3 gap-2">
-                  <button class="py-2.5 px-3 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-all border border-white/5 border-l-4 border-l-accent-red" id="presetRed">Red</button>
-                  <button class="py-2.5 px-3 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-all border border-white/5 border-l-4 border-l-accent-green" id="presetGreen">Green</button>
-                  <button class="py-2.5 px-3 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-all border border-white/5 border-l-4 border-l-accent-blue" id="presetBlue">Blue</button>
-                </div>
-              </div>
-
-              <!-- Party Mode Toggle -->
-              <div class="flex">
-                <button class="w-full flex items-center justify-center gap-2 py-3 px-4 text-xs font-bold text-accent-purple bg-accent-purple/10 hover:bg-accent-purple/15 border border-accent-purple/20 rounded-xl transition-all" id="btnParty">
-                  <svg class="w-4 h-4 fill-current animate-spin" style="animation-duration: 4s;" viewBox="0 0 24 24">
-                    <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
-                  </svg>
-                  <span>Party Mode: OFF</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- White Light Mode Panel -->
-            <div class="flex flex-col gap-5 hidden" id="panelWhite">
-              <!-- Warmth Slider -->
-              <div class="flex flex-col gap-3.5 bg-zinc-950/40 p-4 rounded-xl border border-white/5">
-                <div class="flex justify-between text-xs font-semibold">
-                  <span class="text-zinc-400">Color Temperature</span>
-                  <span class="text-white" id="warmthValText">Neutral (100)</span>
-                </div>
-                <div class="flex items-center gap-3">
-                  <span class="text-base select-none">❄️</span>
-                  <input type="range" class="slider warmth-slider flex-grow" id="warmthSlider" min="0" max="200" value="100">
-                  <span class="text-base select-none">🔥</span>
-                </div>
-              </div>
-
-              <!-- Quick White Presets -->
-              <div class="flex flex-col gap-2">
-                <span class="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">White presets</span>
-                <div class="grid grid-cols-3 gap-2">
-                  <button class="py-2.5 px-3 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-all border border-white/5" id="presetWarmWhite">Warm White</button>
-                  <button class="py-2.5 px-3 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-all border border-white/5" id="presetAllWhite">All White</button>
-                  <button class="py-2.5 px-3 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-all border border-white/5" id="presetDimWhite">Dim White</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Global Brightness Slider -->
-            <div class="flex flex-col gap-3 bg-zinc-950/40 p-4 rounded-xl border border-white/5">
-              <div class="flex justify-between text-xs font-semibold">
-                <span class="text-zinc-400">Dimmer / Brightness</span>
-                <span class="text-white" id="brightnessValText">208 / 208 (100%)</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <svg class="w-4 h-4 fill-current text-zinc-500" viewBox="0 0 24 24">
-                  <path d="M20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69zm-2 5.79V18h-3.52L12 20.48 9.52 18H6v-3.52L3.52 12 6 9.52V6h3.52L12 3.52 14.48 6H18v3.52L20.48 12 18 14.48z"/>
-                </svg>
-                <!-- Max Reos brightness threshold is 208 from App source -->
-                <input type="range" class="slider flex-grow" id="brightnessSlider" min="16" max="208" value="208">
-                <svg class="w-4 h-4 fill-current text-zinc-300" viewBox="0 0 24 24">
-                  <path d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-7h-2v3h2v-3z"/>
-                </svg>
-              </div>
-            </div>
-
           </div>
-        </section>
-      </div>
+          <div class="flex flex-col gap-2">
+            <span class="label">Presets</span>
+            <div class="grid grid-cols-3 gap-2">
+              <button class="chip" id="presetWarmWhite">Warm</button>
+              <button class="chip" id="presetAllWhite">Neutral</button>
+              <button class="chip" id="presetDimWhite">Dim</button>
+            </div>
+          </div>
+        </div>
 
+        <!-- Brightness -->
+        <div class="panel-inset flex flex-col gap-3">
+          <div class="flex justify-between text-xs font-semibold">
+            <span class="text-zinc-400">Brightness</span>
+            <span class="text-white tabular-nums" id="brightnessValText">208 / 208 (100%)</span>
+          </div>
+          <input type="range" class="slider" id="brightnessSlider" min="16" max="208" value="208">
+        </div>
+      </section>
     </div>
 
-    <!-- Diagnostics Logs console (Full Width) -->
-    <section class="bg-[#020204] border border-white/5 rounded-3xl p-5 flex flex-col gap-4.5 shadow-2xl">
-      <div class="flex justify-between items-center border-b border-white/5 pb-3 flex-wrap gap-2">
-        <div class="flex items-center gap-2 text-xs font-semibold text-zinc-400">
-          <svg class="w-4 h-4 fill-current text-zinc-500" viewBox="0 0 24 24">
-            <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 12H4v-2h8v2zm8-4H4V8h16v4z"/>
-          </svg>
-          Live Diagnostics Logs
-        </div>
-        <div class="flex gap-2">
-          <button class="py-1 px-2.5 text-[10px] font-semibold tracking-wider text-zinc-400 bg-white/[0.02] border border-white/5 rounded-md hover:bg-white/[0.06] hover:text-white transition-all" id="btnClearLogs">Clear</button>
-          <button class="py-1 px-2.5 text-[10px] font-semibold tracking-wider text-zinc-400 bg-white/[0.02] border border-white/5 rounded-md hover:bg-white/[0.06] hover:text-white transition-all" id="btnCopyLogs">Copy Logs</button>
-        </div>
+    <!-- Logs (collapsed) -->
+    <details class="card logs">
+      <summary>
+        <span class="card-title">Diagnostics log</span>
+        <svg class="chev w-4 h-4 fill-current text-zinc-500" viewBox="0 0 24 24"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+      </summary>
+      <div class="flex gap-2 justify-end mt-3">
+        <button class="mini-btn" id="btnClearLogs">Clear</button>
+        <button class="mini-btn" id="btnCopyLogs">Copy</button>
       </div>
-      <pre class="matrix-logs h-32 overflow-y-auto text-[10px] leading-relaxed p-3.5 rounded-xl border border-white/[0.02]" id="debugLogs"></pre>
-    </section>
+      <pre class="matrix-logs h-40 overflow-y-auto text-[10px] leading-relaxed p-3 rounded-xl mt-2" id="debugLogs"></pre>
+    </details>
 
-  </div>
+  </main>
 
   <script src="protocol.js"></script>
   <script src="app.js"></script>
