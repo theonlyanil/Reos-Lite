@@ -2,7 +2,7 @@
 //  - tracks every paired bulb and keeps it connected
 //  - reconnects with backoff, then waits for the bulb's advertisement (if supported)
 //  - per-bulb "latest wins" write queue so fast slider drags never interleave writes
-import { ReosProtocol, NAME_PREFIX } from './protocol.js';
+import { ReosProtocol } from './protocol.js';
 
 const MAX_BACKOFF_MS = 30000;
 const QUICK_RETRIES = 3;
@@ -63,7 +63,7 @@ export class BulbManager {
       return 0;
     }
     this.log('Looking up bulbs saved in this browser...', 'info');
-    const devices = (await navigator.bluetooth.getDevices()).filter((d) => d.name?.startsWith(NAME_PREFIX));
+    const devices = await navigator.bluetooth.getDevices(); // only contains devices this site was granted via the chooser
     this.log(`Found ${devices.length} saved bulb(s).`, devices.length ? 'success' : 'info');
     if (devices.length) this.log(`Connecting to ${devices.length} saved bulb(s)...`, 'info');
     devices.forEach((d) => this.add(d));

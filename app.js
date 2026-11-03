@@ -34,6 +34,8 @@ const activityLine = document.getElementById('activityLine');
 const activityText = document.getElementById('activityText');
 const activitySpinner = document.getElementById('activitySpinner');
 const appFooter = document.getElementById('appFooter');
+const troubleshoot = document.getElementById('troubleshoot');
+const btnPairAll = document.getElementById('btnPairAll');
 
 // Buttons
 const btnPair = document.getElementById('btnPair');
@@ -194,37 +196,69 @@ let pairing = false;
 
 // Web Bluetooth shows a single-select chooser, so "pair all" re-opens it after each pick.
 // Already-paired bulbs are excluded so only unpaired Lite- bulbs are listed.
-btnPair.addEventListener('click', async () => {
+btnPair.addEventListener('click', () => pairBulbs({ all: false }));
+
+/**
+ * @param {{all: boolean}} opts all=true lists EVERY nearby BLE device (troubleshooting mode).
+ */
+async function pairBulbs({ all }) {
   if (pairing) return;
   if (!navigator.bluetooth) {
     log('Web Bluetooth is not available in this browser.', 'error');
+    setActivity('Web Bluetooth is not available in this browser. Use Chrome or Edge.', { tone: 'warn' });
     return;
   }
   pairing = true;
   btnPair.disabled = true;
   let added = 0;
   try {
-    for (;;) {
-      const options = {
-        filters: [{ namePrefix: NAME_PREFIX }],
-        optionalServices: [ReosProtocol.SERVICE_UUID],
-      };
-      const names = manager.knownNames();
-      if (names.length) options.exclusionFilters = names.map((name) => ({ name }));
+    // Bluetooth radio state (Android: off radio is the #1 cause of an empty chooser)
+    if (navigator.bluetooth.getAvailability) {
+      const available = await navigator.bluetooth.getAvailability().catch(() => undefined);
+      log(`Bluetooth adapter available: ${available}`, available === false ? 'error' : 'info');
+      if (available === false) {
+        setActivity('Bluetooth is off or unavailable on this device. Turn it on and try again.', { tone: 'warn' });
+      }
+    }
 
+    for (;;) {
+      const options = all
+        ? { acceptAllDevices: true, optionalServices: [ReosProtocol.SERVICE_UUID] }
+        : {
+            // Match by name OR by the bulb's control service, so a bulb whose name isn't in
+            // the advertisement packet (common on Android) is still listed.
+            filters: [{ namePrefix: NAME_PREFIX }, { services: [ReosProtocol.SERVICE_UUID] }],
+            optionalServices: [ReosProtocol.SERVICE_UUID],
+          };
+      const names = manager.knownNames();
+      if (!all && names.length) options.exclusionFilters = names.map((name) => ({ name }));
+
+      log(`Opening chooser (${all ? 'ALL nearby devices' : `name "${NAME_PREFIX}*" or service fff0`})...`, 'info');
+      const opened = performance.now();
       let device;
       try {
         device = await navigator.bluetooth.requestDevice(options);
       } catch (err) {
+        const secs = ((performance.now() - opened) / 1000).toFixed(1);
+        log(`Chooser closed after ${secs}s: ${err.name}: ${err.message}`, err.name === 'NotFoundError' ? 'info' : 'error');
         if (err.name === 'NotFoundError') {
-          log(added ? `Pairing finished. ${added} bulb(s) added.` : 'Pairing cancelled.', 'info');
+          if (added) {
+            log(`Pairing finished. ${added} bulb(s) added.`, 'success');
+          } else if (parseFloat(secs) < 2) {
+            setActivity('The chooser closed right away. Check Bluetooth, location and the Chrome "Nearby devices" permission (see Troubleshooting).', { tone: 'warn' });
+          } else {
+            setActivity('No bulb was selected. If none appeared, open Troubleshooting below.', { tone: 'warn' });
+            troubleshoot.open = true;
+          }
         } else if (err.name === 'SecurityError' || err.name === 'NotAllowedError') {
           log('Browser needs another tap to open the chooser. Tap "Add another bulb" to continue.', 'info');
+          if (!added) setActivity(`Bluetooth access was blocked (${err.message}). Check site permissions for this page.`, { tone: 'warn' });
         } else {
-          log(`Pairing failed: ${err.message}`, 'error');
+          setActivity(`Pairing failed: ${err.message}`, { tone: 'warn' });
         }
         break;
       }
+      log(`Chooser returned: "${device.name || '(no name)'}" id=${device.id.slice(0, 8)}...`, 'success');
       manager.add(device);
       added++;
       log(`Paired ${device.name}. Opening chooser for the next bulb (cancel to finish)...`, 'info');
@@ -233,7 +267,9 @@ btnPair.addEventListener('click', async () => {
     pairing = false;
     btnPair.disabled = false;
   }
-});
+}
+
+btnPairAll.addEventListener('click', () => pairBulbs({ all: true }));
 
 // Live activity line under the bulb buttons: always says what is happening right now.
 let activityTimer = null;
@@ -652,4 +688,18 @@ function stopEffect(announce = false) {
 
 appFooter.textContent = `Reos Lite Control Center · v${VERSION} · released ${new Date(RELEASE_DATE + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}`;
 
+// One-time environment report so remote issues (e.g. a phone) can be diagnosed from the log.
+async function logEnvironment() {
+  const ua = navigator.userAgent;
+  const chrome = /(?:Chrome|CriOS|EdgA?)\/(\d+)/.exec(ua)?.[1];
+  log(`Environment: ${/Android/i.test(ua) ? 'Android' : /iPhone|iPad/i.test(ua) ? 'iOS' : 'Desktop'}, Chrome/Chromium ${chrome || 'n/a'}, secure=${window.isSecureContext}`, 'info');
+  log(`APIs: bluetooth=${!!navigator.bluetooth}, getDevices=${!!navigator.bluetooth?.getDevices}, watchAdvertisements=${typeof BluetoothDevice !== 'undefined' && !!BluetoothDevice.prototype.watchAdvertisements}`, 'info');
+  if (navigator.bluetooth?.getAvailability) {
+    const available = await navigator.bluetooth.getAvailability().catch(() => undefined);
+    log(`Bluetooth adapter available: ${available}`, available === false ? 'error' : 'info');
+  }
+  if (/Android/i.test(ua)) log('Android tip: Bluetooth AND Location must be ON, and Chrome needs the "Nearby devices" permission.', 'info');
+}
+
 init();
+logEnvironment();

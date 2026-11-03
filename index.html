@@ -83,6 +83,16 @@
             <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.74 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
             <span>Reconnect saved bulbs</span>
           </button>
+          <details class="trouble" id="troubleshoot">
+            <summary>Can't see your bulb?</summary>
+            <ol>
+              <li><b>Close other controllers.</b> A bulb talks to one device at a time. Disconnect it from your laptop (this page's "Disconnect all", then close that tab), the Reos app, or any other phone.</li>
+              <li><b>Android:</b> turn on <b>Bluetooth and Location</b>, and in Settings → Apps → Chrome → Permissions allow <b>Nearby devices</b>.</li>
+              <li><b>Power-cycle the bulb</b> (switch off for 5 s, then on) and keep the phone within a few metres.</li>
+              <li>Still nothing? Try the button below. It lists every nearby Bluetooth device, so you can spot the bulb even if it uses a different name.</li>
+            </ol>
+            <button class="btn-ghost" id="btnPairAll"><span>Show all nearby devices</span></button>
+          </details>
           <div class="activity hidden" id="activityLine" role="status" aria-live="polite">
             <span class="spinner" id="activitySpinner" aria-hidden="true"></span>
             <span id="activityText"></span>
