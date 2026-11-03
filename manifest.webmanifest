@@ -1,0 +1,11 @@
+{
+  "name": "Reos Lite Control Center",
+  "short_name": "Reos Lite",
+  "description": "Control Reos Lite BLE smart bulbs with Web Bluetooth.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

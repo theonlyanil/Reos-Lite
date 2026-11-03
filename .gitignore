@@ -64,3 +64,9 @@ reos-mobile/ios/capacitor-cordova-ios-plugins/
 
 # Agent / Tool state
 .gemini/
+
+# Reverse-engineering artifacts (vendor APK + decompiled source): keep local only
+tools/jadx/
+tools/jadx-1.4.7.zip
+tools/reos.apk
+tools/reos_src/

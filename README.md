@@ -6,22 +6,56 @@ A premium, fully client-side, zero-dependency web dashboard utilizing the **Web 
 
 ## 🚀 How to Run
 
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/yourusername/reos-lite-control.git
-   cd reos-lite-control
-   ```
-2. Open `index.html` in your browser via a secure context (`HTTPS` or `localhost`).
-   * *Quick local server:* Run `python3 -m http.server 8000` in the directory, then navigate to `http://localhost:8000`.
+**Hosted:** the web app is deployed to GitHub Pages from `main` (Settings → Pages → Source: *GitHub Actions*).
 
----
+**Locally:**
+```bash
+git clone https://github.com/theonlyanil/Reos-Lite.git
+cd Reos-Lite
+python3 -m http.server 8000   # then open http://localhost:8000
+```
+Web Bluetooth needs a secure context (`https://` or `localhost`). ES modules also need a server, so opening `index.html` via `file://` won't work.
+
+### Supported browsers
+
+| Platform | Works? |
+|---|---|
+| Chrome / Edge / Opera on desktop | ✅ |
+| Chrome on Android | ✅ |
+| iOS (any browser), Safari, Firefox | ❌ no Web Bluetooth. Use Bluefy (below) or the native `reos-mobile` app |
+
+### Pairing several bulbs & auto-connect
+
+* **Add new bulb** opens the browser's chooser filtered to `Lite-` bulbs. Browsers only allow *one* pick per chooser, so the app re-opens it after each pick (already-paired bulbs are hidden); cancel the chooser to finish. If the browser asks for another tap, press **Add another bulb**.
+* Paired bulbs are remembered. On every page load the app asks the browser for them (`navigator.bluetooth.getDevices()`) and connects all in parallel. Bulbs that are out of range are picked up automatically once they start advertising (`watchAdvertisements`), and dropped links reconnect with backoff.
+* On older Chrome versions, `getDevices` needs `chrome://flags/#enable-web-bluetooth-new-permissions-backend`.
+* Changes are queued per bulb ("latest wins"), so dragging a slider never floods a bulb with stale writes.
+
+### Project layout
+
+| Path | Purpose |
+|---|---|
+| `index.html`, `style.css`, `app.js` | Web dashboard UI |
+| `bulbs.js` | Connection manager (pairing registry, reconnect, write queue) |
+| `protocol.js` | Packet builders + gamma table. **Single source of truth**, also imported by `reos-mobile` |
+| `sw.js`, `manifest.webmanifest` | Installable PWA / offline shell |
+| `reos-mobile/` | Capacitor + Svelte native app (Android/iOS) |
+| `tools/` | Reverse-engineering notes (APK/decompiled source are git-ignored; bring your own) |
+
+### Mobile app
+
+```bash
+cd reos-mobile
+npm install
+npm run build && npx cap sync android   # then open in Android Studio
+```
 
 ## 🛠️ The Journey: From Zero to One
 
 When we started, there was **zero public documentation** on how to communicate with the Reos Lite BLE smart bulb. Here is how we reverse-engineered the device:
 
 ### Phase 1: APK Decompilation
-We obtained the official Android application package (`reos.apk`) and decompiled it using `jadx` to inspect the Java codebase.
+We obtained the official Android application package (`reos.apk`, not redistributed here) and decompiled it using `jadx` to inspect the Java codebase.
 
 ### Phase 2: Protocol Analysis
 We traced the Bluetooth GATT code to `com.cube26.iota.smartlite.util.h` and identified:
@@ -44,7 +78,7 @@ We reverse-engineered the 17-byte command packet payload:
 *   **Footer bytes:** `0xFF, 0xFF` at index 15 and 16.
 
 ### Phase 3: Web Bluetooth Implementation
-We mapped the Java logic into modular ES6 JavaScript (`protocol.js` and `app.js`), designed a responsive Apple-style dark dashboard using Tailwind CSS, and verified GATT transmission timings.
+We mapped the Java logic into modular ES6 JavaScript (`protocol.js`, `bulbs.js` and `app.js`), designed a responsive Apple-style dark dashboard using Tailwind CSS, and verified GATT transmission timings.
 
 ---
 

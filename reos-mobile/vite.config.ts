@@ -7,6 +7,7 @@ export default defineConfig({
     svelte(),
     tailwindcss()
   ],
+  server: { fs: { allow: ['..'] } },
   build: {
     outDir: 'dist',
     emptyOutDir: true

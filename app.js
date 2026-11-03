@@ -1,32 +1,13 @@
 // app.js
 
-// Map of connected devices: Device ID -> Device Information
-const connectedDevices = new Map();
+// app.js: UI controller (ES module)
+import { ReosProtocol, applyGamma, NAME_PREFIX } from './protocol.js';
+import { BulbManager } from './bulbs.js';
 
-// Active states
+// Active state
 let currentTab = 'rgb'; // 'rgb' or 'white'
 
-// Gamma Correction Table (sampled directly from Array R in the Java source)
-const GAMMA_TABLE = [
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 
-  4, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, 10, 11, 
-  11, 11, 12, 12, 13, 13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 
-  21, 21, 22, 22, 23, 24, 24, 25, 25, 26, 27, 27, 28, 29, 29, 30, 31, 32, 32, 33, 34, 
-  35, 35, 36, 37, 38, 39, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 50, 51, 52, 
-  54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 66, 67, 68, 69, 70, 72, 73, 74, 75, 77, 
-  78, 79, 81, 82, 83, 85, 86, 87, 89, 90, 92, 93, 95, 96, 98, 99, 101, 102, 104, 105, 
-  107, 109, 110, 112, 114, 115, 117, 119, 120, 122, 124, 126, 127, 129, 131, 133, 135, 
-  137, 138, 140, 142, 144, 146, 148, 150, 152, 154, 156, 158, 160, 162, 164, 167, 169, 
-  171, 173, 175, 177, 180, 182, 184, 186, 189, 191, 193, 196, 198, 200, 203, 205, 208, 
-  210, 213, 215, 218, 220, 223, 225, 228, 231, 233, 236, 239, 241, 244, 247, 249, 252, 255
-];
-
-// Helper: Applies Gamma Correction to RGB values
-function applyGamma(val) {
-  const clamp = Math.max(0, Math.min(255, Math.round(val)));
-  return GAMMA_TABLE[clamp];
-}
+const manager = new BulbManager({ log: (m, t) => log(m, t), onChange: () => renderBulbs() });
 
 // DOM Elements
 const compatBanner = document.getElementById('compatBanner');
@@ -87,7 +68,9 @@ function saveState() {
   };
   try {
     localStorage.setItem('reos_state', JSON.stringify(state));
-  } catch (e) {}
+  } catch (e) {
+    console.warn('Could not persist state', e);
+  }
 }
 
 function loadState() {
@@ -142,10 +125,12 @@ setInterval(() => {
 log('Diagnostics Console ready. Waiting for connections...', 'info');
 
 // Restore UI state from localStorage and start auto-reconnect
-window.addEventListener('DOMContentLoaded', () => {
+const init = () => {
   loadState();
-  autoReconnect();
-});
+  renderBulbs();
+  autoConnect();
+};
+init();
 
 // ════════════════════════════════════════════════════════
 //  DIAGNOSTIC LOGGER
@@ -163,13 +148,15 @@ function log(msg, type = 'info') {
 
   const line = document.createElement('div');
   line.className = `${colorClass} font-mono text-[10.5px]`;
-  line.innerHTML = `<strong>${prefix}${type.toUpperCase()}:</strong> ${msg}`;
+  const head = document.createElement('strong');
+  head.textContent = `${prefix}${type.toUpperCase()}: `;
+  line.append(head, document.createTextNode(String(msg)));
   debugLogs.appendChild(line);
   debugLogs.scrollTop = debugLogs.scrollHeight;
 }
 
 btnClearLogs.addEventListener('click', () => {
-  debugLogs.innerHTML = '';
+  debugLogs.replaceChildren();
   log('Console logs cleared.', 'info');
 });
 
@@ -179,176 +166,118 @@ btnCopyLogs.addEventListener('click', () => {
     .catch(e => log(`Failed to copy logs: ${e.message}`, 'error'));
 });
 
-function getHexRepresentation(uint8) {
-  return '[ ' + Array.from(uint8).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ') + ' ]';
-}
-
 // ════════════════════════════════════════════════════════
 //  BLUETOOTH CONNECTIVITY
 // ════════════════════════════════════════════════════════
 
+const btnPairLabel = btnPair.querySelector('span');
+let pairing = false;
+
+// Web Bluetooth shows a single-select chooser, so "pair all" re-opens it after each pick.
+// Already-paired bulbs are excluded so only unpaired Lite- bulbs are listed.
 btnPair.addEventListener('click', async () => {
-  log('Triggering Web Bluetooth pairing chooser...', 'info');
+  if (pairing) return;
+  if (!navigator.bluetooth) {
+    log('Web Bluetooth is not available in this browser.', 'error');
+    return;
+  }
+  pairing = true;
+  btnPair.disabled = true;
+  let added = 0;
   try {
-    const device = await navigator.bluetooth.requestDevice({
-      filters: [{ namePrefix: 'Lite-' }],
-      optionalServices: [ReosProtocol.SERVICE_UUID]
-    });
-    log(`Selected bulb: ${device.name}`, 'info');
-    await connectToDevice(device);
-  } catch (err) {
-    log(`Chooser cancelled or failed: ${err.message}`, 'error');
+    for (;;) {
+      const options = {
+        filters: [{ namePrefix: NAME_PREFIX }],
+        optionalServices: [ReosProtocol.SERVICE_UUID],
+      };
+      const names = manager.knownNames();
+      if (names.length) options.exclusionFilters = names.map((name) => ({ name }));
+
+      let device;
+      try {
+        device = await navigator.bluetooth.requestDevice(options);
+      } catch (err) {
+        if (err.name === 'NotFoundError') {
+          log(added ? `Pairing finished. ${added} bulb(s) added.` : 'Pairing cancelled.', 'info');
+        } else if (err.name === 'SecurityError' || err.name === 'NotAllowedError') {
+          log('Browser needs another tap to open the chooser. Tap "Add another bulb" to continue.', 'info');
+        } else {
+          log(`Pairing failed: ${err.message}`, 'error');
+        }
+        break;
+      }
+      manager.add(device);
+      added++;
+      log(`Paired ${device.name}. Opening chooser for the next bulb (cancel to finish)...`, 'info');
+    }
+  } finally {
+    pairing = false;
+    btnPair.disabled = false;
   }
 });
 
-async function autoReconnect() {
-  log('Starting background auto-reconnect checker...', 'info');
-  if (!navigator.bluetooth || !navigator.bluetooth.getDevices) {
-    log('Background auto-reconnect (getDevices) is not supported. Ensure you are on HTTPS/localhost and that "Experimental Web Platform features" is enabled in chrome://flags.', 'warn');
-    return;
-  }
+btnAutoConnect.addEventListener('click', () => autoConnect());
 
+async function autoConnect() {
   try {
-    log('Searching registry for previously paired bulbs...', 'info');
-    const devices = await navigator.bluetooth.getDevices();
-    log(`Registry lookup complete. Found ${devices.length} paired bulb(s).`, 'success');
-
-    if (devices.length === 0) {
-      log('No previously linked bulbs found. Click "Pair Bulb" to add one.', 'info');
-      return;
-    }
-
-    for (const device of devices) {
-      if (device.name && device.name.startsWith('Lite-')) {
-        log(`Initiating reconnection to paired bulb: "${device.name}"...`, 'info');
-        await connectToDevice(device);
-      }
-    }
+    await manager.restoreSaved();
   } catch (err) {
-    log(`Registry lookup failed: ${err.message}`, 'error');
-  }
-}
-
-async function connectToDevice(device) {
-  if (connectedDevices.has(device.id)) {
-    log(`Bulb ${device.name} is already connected.`, 'warn');
-    return;
-  }
-
-  log(`Opening GATT Server link to ${device.name}...`, 'info');
-  try {
-    const server = await device.gatt.connect();
-    log(`GATT connection established on ${device.name}.`, 'success');
-
-    log(`Discovering primary service ${ReosProtocol.SERVICE_UUID}...`, 'info');
-    const service = await server.getPrimaryService(ReosProtocol.SERVICE_UUID);
-    
-    log(`Locating control characteristic ${ReosProtocol.CHARACTERISTIC_UUID}...`, 'info');
-    const characteristic = await service.getCharacteristic(ReosProtocol.CHARACTERISTIC_UUID);
-    log(`Control characteristic linked on ${device.name}.`, 'success');
-
-    const info = { device, server, service, characteristic, name: device.name, id: device.id };
-    connectedDevices.set(device.id, info);
-
-    device.addEventListener('gattserverdisconnected', onDeviceDisconnected);
-
-    renderDeviceItem(info);
-    updateHeaderStatus();
-
-    log(`Bulb ${device.name} connected successfully and holding current hardware state.`, 'success');
-  } catch (err) {
-    log(`GATT handshake failed with ${device.name}: ${err.message}`, 'error');
+    log(`Saved-bulb lookup failed: ${err.message}`, 'error');
   }
 }
 
 btnDisconnectAll.addEventListener('click', () => {
-  log('Disconnecting all active BLE links...', 'warn');
-  for (const [id, info] of connectedDevices.entries()) {
-    try {
-      info.server.disconnect();
-      log(`Disconnected: ${info.name}`, 'info');
-    } catch (e) {}
-  }
-  connectedDevices.clear();
-  deviceList.innerHTML = '';
-  deviceList.appendChild(listPlaceholder);
-  updateHeaderStatus();
+  log('Disconnecting all bulbs...', 'warn');
+  manager.removeAll();
 });
 
-function onDeviceDisconnected(event) {
-  const device = event.target;
-  log(`Bulb connection dropped: ${device.name}`, 'error');
-  connectedDevices.delete(device.id);
+function renderBulbs() {
+  const bulbs = [...manager.bulbs.values()];
+  deviceList.replaceChildren();
 
-  const element = document.getElementById(`dev-${device.id}`);
-  if (element) element.remove();
+  if (bulbs.length === 0) deviceList.appendChild(listPlaceholder);
 
-  if (connectedDevices.size === 0) {
-    deviceList.appendChild(listPlaceholder);
+  const labels = { connected: 'Connected', connecting: 'Connecting...', searching: 'Searching for bulb...' };
+  for (const bulb of bulbs) {
+    const row = document.createElement('div');
+    row.className = 'device-row';
+    row.id = `dev-${bulb.id}`;
+
+    const left = document.createElement('div');
+    left.className = 'flex items-center gap-3 min-w-0';
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    if (bulb.status !== 'connected') dot.style.opacity = '0.35';
+    const col = document.createElement('div');
+    col.className = 'flex flex-col min-w-0';
+    const nameEl = document.createElement('span');
+    nameEl.className = 'text-sm font-semibold text-white truncate';
+    nameEl.textContent = bulb.name;
+    const statusEl = document.createElement('span');
+    statusEl.className = 'text-[10px] text-zinc-500';
+    statusEl.textContent = labels[bulb.status] || bulb.status;
+    col.append(nameEl, statusEl);
+    left.append(dot, col);
+
+    const remove = document.createElement('button');
+    remove.className = 'link-danger';
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', () => manager.remove(bulb.id, { forget: true }));
+
+    row.append(left, remove);
+    deviceList.appendChild(row);
   }
-  updateHeaderStatus();
-}
 
-function renderDeviceItem(info) {
-  const placeholder = document.getElementById('listPlaceholder');
-  if (placeholder) placeholder.remove();
-
-  const item = document.createElement('div');
-  item.className = 'device-row';
-  item.id = `dev-${info.id}`;
-  item.innerHTML = `
-    <div class="flex items-center gap-3 min-w-0">
-      <span class="dot"></span>
-      <div class="flex flex-col min-w-0">
-        <span class="text-sm font-semibold text-white truncate">${info.name}</span>
-        <span class="text-[10px] text-zinc-500">Connected</span>
-      </div>
-    </div>
-    <button class="link-danger" onclick="disconnectBulb('${info.id}')">Remove</button>
-  `;
-  deviceList.appendChild(item);
-}
-
-window.disconnectBulb = function(id) {
-  const info = connectedDevices.get(id);
-  if (info) {
-    info.server.disconnect();
-    connectedDevices.delete(id);
-    const element = document.getElementById(`dev-${id}`);
-    if (element) element.remove();
-    log(`Disconnected: ${info.name}`, 'info');
-  }
-  if (connectedDevices.size === 0) {
-    deviceList.appendChild(listPlaceholder);
-  }
-  updateHeaderStatus();
-};
-
-function updateHeaderStatus() {
-  const count = connectedDevices.size;
+  const count = manager.connectedCount;
   activeCountText.textContent = `${count} bulb${count !== 1 ? 's' : ''}`;
-  
-  if (count > 0) {
-    statusDot.className = 'w-2 h-2 bg-accent-green rounded-full shadow-lg shadow-accent-green/40 animate-pulse';
-  } else {
-    statusDot.className = 'w-2 h-2 bg-zinc-600 rounded-full';
-  }
+  statusDot.className = count > 0
+    ? 'w-2 h-2 bg-accent-green rounded-full shadow-lg shadow-accent-green/40 animate-pulse'
+    : 'w-2 h-2 bg-zinc-600 rounded-full';
+  btnPairLabel.textContent = bulbs.length ? 'Add another bulb' : 'Add new bulb';
 }
 
-async function broadcastPacket(packet) {
-  if (connectedDevices.size === 0) {
-    log('No bulbs connected. Transmit ignored.', 'warn');
-    return;
-  }
-
-  for (const [id, info] of connectedDevices.entries()) {
-    try {
-      await info.characteristic.writeValueWithoutResponse(packet);
-    } catch (err) {
-      log(`Transmit failed on ${info.name}: ${err.message}`, 'error');
-    }
-  }
-  log(`TX OK -> ${getHexRepresentation(packet)}`, 'success');
+function broadcastPacket(packet) {
+  if (manager.broadcast(packet) === 0) log('No bulbs connected. Transmit ignored.', 'warn');
 }
 
 // ════════════════════════════════════════════════════════
