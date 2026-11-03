@@ -26,7 +26,9 @@ Web Bluetooth needs a secure context (`https://` or `localhost`). ES modules als
 
 ### Pairing several bulbs & auto-connect
 
-* **Add new bulb** opens the browser's chooser filtered to `Lite-` bulbs. Browsers only allow *one* pick per chooser, so the app re-opens it after each pick (already-paired bulbs are hidden); cancel the chooser to finish. If the browser asks for another tap, press **Add another bulb**.
+* **Add new bulb** opens the browser's chooser, filtered to bulbs named `Lite*` (e.g. `Lite-1A2B` or `Lite1100`) or advertising the control service `fff0`. Browsers only allow *one* pick per chooser, and Chrome requires a fresh tap each time (Android always, desktop sometimes), so tap **Add another bulb** for each additional bulb. Bulbs of one model may share the same advertised name, so rows get a `#xxxx` suffix and a **Blink** button to identify the physical bulb.
+* A bulb only talks to one controller: disconnect it from other phones/laptops/the Reos app first, or it won't be listed.
+* **Can't see a bulb?** Open *Can't see your bulb?* in the app. *Show all nearby devices* lists every BLE device so you can find a bulb with an unexpected name.
 * Paired bulbs are remembered. On every page load the app asks the browser for them (`navigator.bluetooth.getDevices()`) and connects all in parallel. Bulbs that are out of range are picked up automatically once they start advertising (`watchAdvertisements`), and dropped links reconnect with backoff.
 * On older Chrome versions, `getDevices` needs `chrome://flags/#enable-web-bluetooth-new-permissions-backend`.
 * Changes are queued per bulb ("latest wins"), so dragging a slider never floods a bulb with stale writes.

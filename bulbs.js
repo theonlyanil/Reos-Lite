@@ -136,6 +136,19 @@ export class BulbManager {
     [...this.bulbs.keys()].forEach((id) => this.remove(id));
   }
 
+  /** Write one packet to a single bulb right now (no coalescing). */
+  async sendTo(id, packet) {
+    const bulb = this.bulbs.get(id);
+    if (!bulb?.characteristic) return false;
+    try {
+      await bulb.characteristic.writeValueWithoutResponse(packet);
+      return true;
+    } catch (err) {
+      this.log(`Write failed on ${bulb.name}: ${err.message}`, 'error');
+      return false;
+    }
+  }
+
   /** Send one packet to every connected bulb. Returns how many bulbs were targeted. */
   broadcast(packet) {
     let n = 0;

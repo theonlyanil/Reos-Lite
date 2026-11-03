@@ -1,5 +1,5 @@
 // Network-first with cache fallback so the dashboard (and its CDN assets) open offline.
-const CACHE = 'reos-lite-v5';
+const CACHE = 'reos-lite-v6';
 const SHELL = ['./', 'index.html', 'app.js', 'bulbs.js', 'effects.js', 'version.js', 'protocol.js', 'style.css', 'manifest.webmanifest', 'icon.svg'];
 
 self.addEventListener('install', (e) => {

@@ -21,7 +21,8 @@ export function applyGamma(val) {
   return GAMMA_TABLE[Math.max(0, Math.min(255, Math.round(val)))];
 }
 
-export const NAME_PREFIX = 'Lite-';
+// Prefix only: bulbs show up as "Lite-XXXX" on some platforms and "Lite1100" on others (Android).
+export const NAME_PREFIX = 'Lite';
 
 export const ReosProtocol = {
   SERVICE_UUID: '0000fff0-0000-1000-8000-00805f9b34fb',

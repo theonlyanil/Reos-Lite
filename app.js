@@ -230,8 +230,8 @@ async function pairBulbs({ all }) {
             filters: [{ namePrefix: NAME_PREFIX }, { services: [ReosProtocol.SERVICE_UUID] }],
             optionalServices: [ReosProtocol.SERVICE_UUID],
           };
-      const names = manager.knownNames();
-      if (!all && names.length) options.exclusionFilters = names.map((name) => ({ name }));
+      // No exclusionFilters: bulbs of one model can share an advertised name (e.g. all "Lite1100"),
+      // which would hide every other bulb after the first pairing. Duplicates are ignored by id instead.
 
       log(`Opening chooser (${all ? 'ALL nearby devices' : `name "${NAME_PREFIX}*" or service fff0`})...`, 'info');
       const opened = performance.now();
@@ -240,7 +240,8 @@ async function pairBulbs({ all }) {
         device = await navigator.bluetooth.requestDevice(options);
       } catch (err) {
         const secs = ((performance.now() - opened) / 1000).toFixed(1);
-        log(`Chooser closed after ${secs}s: ${err.name}: ${err.message}`, err.name === 'NotFoundError' ? 'info' : 'error');
+        const gestureOnly = added > 0 && (err.name === 'SecurityError' || err.name === 'NotAllowedError');
+        log(`Chooser closed after ${secs}s: ${err.name}: ${err.message}`, err.name === 'NotFoundError' || gestureOnly ? 'info' : 'error');
         if (err.name === 'NotFoundError') {
           if (added) {
             log(`Pairing finished. ${added} bulb(s) added.`, 'success');
@@ -251,8 +252,13 @@ async function pairBulbs({ all }) {
             troubleshoot.open = true;
           }
         } else if (err.name === 'SecurityError' || err.name === 'NotAllowedError') {
-          log('Browser needs another tap to open the chooser. Tap "Add another bulb" to continue.', 'info');
-          if (!added) setActivity(`Bluetooth access was blocked (${err.message}). Check site permissions for this page.`, { tone: 'warn' });
+          if (added) {
+            // Browsers (Android Chrome especially) require a fresh tap for every chooser.
+            log(`Paired ${added} bulb(s). Tap "Add another bulb" to pair the next one.`, 'info');
+            setActivity(`Paired ${added} bulb${added > 1 ? 's' : ''}. Tap "Add another bulb" to pair the next one (the browser needs a tap each time).`, { tone: 'ok' });
+          } else {
+            setActivity(`Bluetooth access was blocked (${err.message}). Check site permissions for this page.`, { tone: 'warn' });
+          }
         } else {
           setActivity(`Pairing failed: ${err.message}`, { tone: 'warn' });
         }
@@ -376,7 +382,8 @@ function renderBulbs() {
     col.className = 'flex flex-col min-w-0';
     const nameEl = document.createElement('span');
     nameEl.className = 'text-sm font-semibold text-white truncate';
-    nameEl.textContent = bulb.name;
+    const dupes = bulbs.filter((x) => x.name === bulb.name).length > 1;
+    nameEl.textContent = dupes ? `${bulb.name} #${bulb.id.slice(-4)}` : bulb.name;
     const statusEl = document.createElement('span');
     statusEl.className = 'text-[10px] text-zinc-500';
     statusEl.textContent = statusLabel(bulb);
@@ -389,12 +396,18 @@ function renderBulbs() {
     toggle.className = bulb.status === 'disconnected' ? 'mini-action connect' : 'mini-action';
     toggle.textContent = bulb.status === 'disconnected' ? 'Connect' : bulb.status === 'connected' ? 'Disconnect' : 'Stop';
     toggle.addEventListener('click', () => (bulb.status === 'disconnected' ? manager.resume(bulb.id) : manager.pause(bulb.id)));
+    const ident = document.createElement('button');
+    ident.className = 'link-accent';
+    ident.textContent = 'Blink';
+    ident.title = 'Flash this bulb so you can tell which one it is';
+    ident.disabled = bulb.status !== 'connected';
+    ident.addEventListener('click', () => identifyBulb(bulb.id));
     const remove = document.createElement('button');
     remove.className = 'link-danger';
     remove.textContent = 'Forget';
     remove.title = 'Remove this bulb and revoke the browser permission';
     remove.addEventListener('click', () => manager.remove(bulb.id, { forget: true }));
-    actions.append(toggle, remove);
+    actions.append(ident, toggle, remove);
 
     row.append(left, actions);
     deviceList.appendChild(row);
@@ -408,6 +421,21 @@ function renderBulbs() {
   btnPairLabel.textContent = bulbs.length ? 'Add another bulb' : 'Add new bulb';
 
   if (reconnecting && manager.connectingCount === 0) finishReconnect();
+}
+
+async function identifyBulb(id) {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const wasFx = fxId;
+  stopEffect();
+  for (let i = 0; i < 3; i++) {
+    await manager.sendTo(id, ReosProtocol.getColorPacket(applyGamma(255), applyGamma(255), applyGamma(255), 208));
+    await sleep(300);
+    await manager.sendTo(id, ReosProtocol.getColorPacket(0, 0, 0, 16));
+    await sleep(300);
+  }
+  // put the whole group back into its current state
+  if (wasFx) startEffect(wasFx);
+  else applyStateChange();
 }
 
 function broadcastPacket(packet) {
