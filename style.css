@@ -335,3 +335,97 @@ body {
   background: rgba(255, 255, 255, 0.08);
   border-radius: 3px;
 }
+
+/* ── Effects ───────────────────────────────────────────── */
+.fx-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fx-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 92px;
+  padding: 12px;
+  text-align: left;
+  color: #e4e4e7;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: transform 0.12s ease, background 0.25s ease, border-color 0.25s ease, box-shadow 0.3s ease;
+}
+
+.fx-card:hover { background: rgba(255, 255, 255, 0.08); }
+.fx-card:active { transform: scale(0.97); }
+.fx-emoji { font-size: 24px; line-height: 1.2; }
+.fx-name { font-size: 13px; font-weight: 700; }
+.fx-blurb { font-size: 10.5px; line-height: 1.3; color: #a1a1aa; }
+
+.fx-card.on {
+  border-color: color-mix(in srgb, var(--glow) 70%, white 10%);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--glow) 28%, transparent), rgba(24, 24, 27, 0.6));
+  box-shadow: 0 6px 28px color-mix(in srgb, var(--glow) 40%, transparent);
+}
+
+.fx-card.on .fx-emoji { animation: fx-pulse 1.4s ease-in-out infinite; }
+.fx-card.on::after {
+  content: 'PLAYING';
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #fff;
+  opacity: 0.8;
+}
+
+@keyframes fx-pulse {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.12); filter: brightness(1.25); }
+}
+
+/* Diwali diya gets a festive highlight even when idle */
+.fx-card[data-fx='diya'] {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+  background: linear-gradient(120deg, rgba(255, 140, 0, 0.18), rgba(255, 59, 48, 0.1));
+  border-color: rgba(255, 159, 10, 0.35);
+}
+.fx-card[data-fx='diya'] .fx-emoji { font-size: 34px; }
+.fx-card[data-fx='diya'].on {
+  border-color: rgba(255, 159, 10, 0.9);
+  background: linear-gradient(120deg, color-mix(in srgb, var(--glow) 40%, transparent), rgba(255, 59, 48, 0.12));
+  box-shadow: 0 6px 32px color-mix(in srgb, var(--glow) 55%, transparent);
+}
+.fx-card[data-fx='diya'].on::after { top: 50%; transform: translateY(-50%); right: 14px; }
+.fx-card[data-fx='diya'] .fx-name,
+.fx-card[data-fx='diya'] .fx-blurb { display: block; }
+
+/* ── General UX polish ─────────────────────────────────── */
+button:focus-visible,
+input:focus-visible,
+summary:focus-visible {
+  outline: 2px solid #0a84ff;
+  outline-offset: 2px;
+}
+
+button:disabled { opacity: 0.55; cursor: progress; }
+button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+
+.device-row { animation: row-in 0.25s ease both; }
+@keyframes row-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.device-row .dot.busy { background: #ff9f0a; box-shadow: 0 0 10px rgba(255, 159, 10, 0.6); animation: blink 1.1s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: 0.25; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

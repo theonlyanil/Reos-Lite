@@ -3,6 +3,7 @@
 // app.js: UI controller (ES module)
 import { ReosProtocol, applyGamma, NAME_PREFIX } from './protocol.js';
 import { BulbManager } from './bulbs.js';
+import { EFFECTS, EFFECT_IDS } from './effects.js';
 
 // Active state
 let currentTab = 'rgb'; // 'rgb' or 'white'
@@ -23,11 +24,15 @@ const btnAutoConnect = document.getElementById('btnAutoConnect');
 const btnDisconnectAll = document.getElementById('btnDisconnectAll');
 const btnPowerOn = document.getElementById('btnPowerOn');
 const btnPowerOff = document.getElementById('btnPowerOff');
-const btnParty = document.getElementById('btnParty');
 
 // Tab Navigation
 const tabRgb = document.getElementById('tabRgb');
 const tabWhite = document.getElementById('tabWhite');
+const tabFx = document.getElementById('tabFx');
+const panelFx = document.getElementById('panelFx');
+const fxGrid = document.getElementById('fxGrid');
+const fxSpeed = document.getElementById('fxSpeed');
+const fxSpeedText = document.getElementById('fxSpeedText');
 const panelRgb = document.getElementById('panelRgb');
 const panelWhite = document.getElementById('panelWhite');
 
@@ -99,8 +104,6 @@ function loadState() {
     if (state.currentTab === 'white') {
       currentTab = 'white';
       setTabUI('white');
-      panelWhite.classList.remove('hidden');
-      panelRgb.classList.add('hidden');
     }
   } catch (e) {
     console.error('Failed to load state from localStorage', e);
@@ -124,13 +127,12 @@ setInterval(() => {
 
 log('Diagnostics Console ready. Waiting for connections...', 'info');
 
-// Restore UI state from localStorage and start auto-reconnect
+// Restore UI state from localStorage and start auto-connect (called at the bottom, after all consts exist)
 const init = () => {
   loadState();
   renderBulbs();
   autoConnect();
 };
-init();
 
 // ════════════════════════════════════════════════════════
 //  DIAGNOSTIC LOGGER
@@ -247,7 +249,7 @@ function renderBulbs() {
     left.className = 'flex items-center gap-3 min-w-0';
     const dot = document.createElement('span');
     dot.className = 'dot';
-    if (bulb.status !== 'connected') dot.style.opacity = '0.35';
+    if (bulb.status !== 'connected') dot.classList.add('busy');
     const col = document.createElement('div');
     col.className = 'flex flex-col min-w-0';
     const nameEl = document.createElement('span');
@@ -284,42 +286,35 @@ function broadcastPacket(packet) {
 //  TABS MANAGEMENT
 // ════════════════════════════════════════════════════════
 
-tabRgb.addEventListener('click', () => {
-  if (currentTab === 'rgb') return;
-  currentTab = 'rgb';
-  setTabUI('rgb');
-  
-  // Update Tab Styling using Tailwind
-  
-  panelRgb.classList.remove('hidden');
-  panelWhite.classList.add('hidden');
-  
-  log('Switched to RGB Color Mode.', 'info');
-  applyStateChange(); // Instantly switch bulb channel state
-});
+const TABS = {
+  rgb: { tab: tabRgb, panel: panelRgb, label: 'Color' },
+  white: { tab: tabWhite, panel: panelWhite, label: 'White' },
+  fx: { tab: tabFx, panel: panelFx, label: 'Effects' },
+};
 
-tabWhite.addEventListener('click', () => {
-  if (currentTab === 'white') return;
-  currentTab = 'white';
-  setTabUI('white');
-  
-  // Update Tab Styling using Tailwind
-  
-  panelWhite.classList.remove('hidden');
-  panelRgb.classList.add('hidden');
-  
-  log('Switched to White Temperature Mode.', 'info');
-  stopPartyMode();
+function switchTab(name) {
+  if (currentTab === name) return;
+  currentTab = name;
+  stopEffect();
+  setTabUI(name);
+  log(`Switched to ${TABS[name].label} mode.`, 'info');
   applyStateChange(); // Instantly switch bulb channel state
-});
+}
+
+tabRgb.addEventListener('click', () => switchTab('rgb'));
+tabWhite.addEventListener('click', () => switchTab('white'));
+tabFx.addEventListener('click', () => switchTab('fx'));
 
 // ════════════════════════════════════════════════════════
 //  RGB CONTROLS & PARSING
 // ════════════════════════════════════════════════════════
 
 function setTabUI(tab) {
-  tabRgb.classList.toggle('active', tab === 'rgb');
-  tabWhite.classList.toggle('active', tab === 'white');
+  for (const [name, t] of Object.entries(TABS)) {
+    t.tab.classList.toggle('active', name === tab);
+    t.tab.setAttribute('aria-selected', String(name === tab));
+    t.panel.classList.toggle('hidden', name !== tab);
+  }
 }
 
 function setOrb(hex) {
@@ -335,12 +330,8 @@ function hexToRgb(hex) {
   } : null;
 }
 
-function rgbToHex(r, g, b) {
-  return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
-}
-
 nativeColorInput.addEventListener('input', (event) => {
-  stopPartyMode();
+  stopEffect();
   const hex = event.target.value;
   colorHexText.textContent = hex.toUpperCase();
   setOrb(hex);
@@ -349,15 +340,15 @@ nativeColorInput.addEventListener('input', (event) => {
 
 // Quick Colors
 presetRed.addEventListener('click', () => {
-  stopPartyMode();
+  stopEffect();
   updateColorWheel('#FF3B30');
 });
 presetGreen.addEventListener('click', () => {
-  stopPartyMode();
+  stopEffect();
   updateColorWheel('#34C759');
 });
 presetBlue.addEventListener('click', () => {
-  stopPartyMode();
+  stopEffect();
   updateColorWheel('#007AFF');
 });
 
@@ -426,6 +417,7 @@ function updateBrightnessLabel(val) {
 
 // Global dispatcher compiling inputs to correct BLE packets and persisting state
 function applyStateChange() {
+  if (fxId) return; // a running effect owns the bulbs
   const bri = parseInt(brightnessSlider.value);
   saveState();
 
@@ -456,6 +448,7 @@ function applyStateChange() {
 // ════════════════════════════════════════════════════════
 
 btnPowerOn.addEventListener('click', async () => {
+  stopEffect();
   log('Broadcasting Power ON packet with active color state...', 'info');
   const bri = parseInt(brightnessSlider.value);
   
@@ -479,83 +472,85 @@ btnPowerOn.addEventListener('click', async () => {
 });
 
 btnPowerOff.addEventListener('click', async () => {
+  stopEffect();
   log('Broadcasting Power OFF packet...', 'info');
   const packet = ReosProtocol.getPowerOffPacket();
   await broadcastPacket(packet);
 });
 
 // ════════════════════════════════════════════════════════
-//  PARTY MODE (CLIENT-SIDE COLOR CYCLE)
+//  LIGHT EFFECTS (diya, candle, fire, party, ...)
 // ════════════════════════════════════════════════════════
 
-let partyIntervalId = null;
+let fxId = null;
+let fxState = null;
+let fxTimer = null;
+const fxCards = new Map();
 
-btnParty.addEventListener('click', () => {
-  togglePartyMode();
+for (const id of EFFECT_IDS) {
+  const fx = EFFECTS[id];
+  const card = document.createElement('button');
+  card.className = 'fx-card';
+  card.dataset.fx = id;
+  card.setAttribute('aria-pressed', 'false');
+  const emoji = document.createElement('span');
+  emoji.className = 'fx-emoji';
+  emoji.textContent = fx.emoji;
+  const name = document.createElement('span');
+  name.className = 'fx-name';
+  name.textContent = fx.label;
+  const blurb = document.createElement('span');
+  blurb.className = 'fx-blurb';
+  blurb.textContent = fx.blurb;
+  card.append(emoji, name, blurb);
+  card.addEventListener('click', () => (fxId === id ? stopEffect(true) : startEffect(id)));
+  fxGrid.appendChild(card);
+  fxCards.set(id, card);
+}
+
+function fxSpeedValue() {
+  return parseFloat(fxSpeed.value);
+}
+
+fxSpeed.addEventListener('input', () => {
+  fxSpeedText.textContent = `${fxSpeedValue().toFixed(1)}x`;
 });
 
-function togglePartyMode() {
-  if (partyIntervalId) {
-    stopPartyMode();
-    log('Party Mode disabled.', 'info');
-  } else {
-    log('Party Mode enabled! Cycling HSL spectrum...', 'success');
-    btnParty.classList.add('on');
-    btnParty.querySelector('span').textContent = 'Party Mode: ON';
-    
-    let hue = 0;
-    partyIntervalId = setInterval(() => {
-      hue = (hue + 4) % 360;
-      const rgb = hslToRgb(hue / 360, 1, 0.5);
-      const bri = parseInt(brightnessSlider.value);
-      
-      const r = applyGamma(rgb.r);
-      const g = applyGamma(rgb.g);
-      const b = applyGamma(rgb.b);
-      
-      // Send HSL cycle using RGB command (Headers: 0x00, 0x01)
-      const packet = ReosProtocol.getColorPacket(r, g, b, bri);
-      broadcastPacket(packet);
-      
-      const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
-      colorHexText.textContent = hex;
-      setOrb(hex);
-      nativeColorInput.value = hex;
-    }, 200);
-  }
+function startEffect(id) {
+  stopEffect();
+  fxId = id;
+  fxState = EFFECTS[id].init();
+  fxCards.get(id).classList.add('on');
+  fxCards.get(id).setAttribute('aria-pressed', 'true');
+  log(`Effect started: ${EFFECTS[id].label}`, 'success');
+  if (manager.connectedCount === 0) log('No bulbs connected yet. The effect will play once one connects.', 'warn');
+  runEffectFrame();
 }
 
-function stopPartyMode() {
-  if (partyIntervalId) {
-    clearInterval(partyIntervalId);
-    partyIntervalId = null;
-    btnParty.classList.remove('on');
-    btnParty.querySelector('span').textContent = 'Party Mode: OFF';
-  }
+function runEffectFrame() {
+  if (!fxId) return;
+  const fx = EFFECTS[fxId];
+  const base = hexToRgb(nativeColorInput.value) || { r: 255, g: 255, b: 255 };
+  const f = fx.frame(fxState, { speed: fxSpeedValue(), base });
+  const max = parseInt(brightnessSlider.value);
+  const bri = Math.round(16 + Math.max(0, Math.min(1, f.level)) * (max - 16));
+  const r = Math.round(f.r), g = Math.round(f.g), b = Math.round(f.b);
+  manager.broadcast(ReosProtocol.getColorPacket(applyGamma(r), applyGamma(g), applyGamma(b), bri));
+  setOrb(`rgb(${r}, ${g}, ${b})`);
+  fxTimer = setTimeout(runEffectFrame, fx.interval);
 }
 
-function hslToRgb(h, s, l) {
-  let r, g, b;
-  if (s == 0) {
-    r = g = b = l;
-  } else {
-    const hue2rgb = (p, q, t) => {
-      if (t < 0) t += 1;
-      if (t > 1) t -= 1;
-      if (t < 1/6) return p + (q - p) * 6 * t;
-      if (t < 1/2) return q;
-      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-      return p;
-    };
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    const p = 2 * l - q;
-    r = hue2rgb(p, q, h + 1/3);
-    g = hue2rgb(p, q, h);
-    b = hue2rgb(p, q, h - 1/3);
-  }
-  return {
-    r: Math.round(r * 255),
-    g: Math.round(g * 255),
-    b: Math.round(b * 255)
-  };
+function stopEffect(announce = false) {
+  if (!fxId) return;
+  clearTimeout(fxTimer);
+  fxTimer = null;
+  const card = fxCards.get(fxId);
+  card.classList.remove('on');
+  card.setAttribute('aria-pressed', 'false');
+  if (announce) log(`Effect stopped: ${EFFECTS[fxId].label}`, 'info');
+  fxId = null;
+  fxState = null;
+  setOrb(nativeColorInput.value);
 }
+
+init();

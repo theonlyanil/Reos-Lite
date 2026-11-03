@@ -36,7 +36,7 @@ jobs:
       - name: Assemble site (web app only; no tools/, node_modules or mobile sources)
         run: |
           mkdir _site
-          cp index.html app.js bulbs.js protocol.js style.css sw.js manifest.webmanifest icon.svg _site/
+          cp index.html app.js bulbs.js effects.js protocol.js style.css sw.js manifest.webmanifest icon.svg _site/
           touch _site/.nojekyll
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
