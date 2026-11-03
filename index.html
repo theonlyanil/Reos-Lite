@@ -47,20 +47,24 @@
           <p class="text-[11px] text-zinc-400 font-medium">BLE smart bulb control</p>
         </div>
       </div>
-      <div class="status-pill">
+      <button class="status-pill" id="bulbsToggle" aria-expanded="true" aria-controls="bulbsCard" title="Show or hide paired bulbs">
         <span class="w-2 h-2 bg-zinc-600 rounded-full" id="statusDot"></span>
         <span id="activeCountText">0 bulbs</span>
         <span id="clock" class="hidden">00:00:00</span>
-      </div>
+        <svg class="pill-chev w-3.5 h-3.5 fill-current text-zinc-500" viewBox="0 0 24 24"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+      </button>
     </header>
 
     <div class="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-5 items-start">
 
       <!-- Devices -->
-      <section class="card md:col-span-2 flex flex-col gap-4">
+      <section class="card md:col-span-2 flex flex-col gap-4" id="bulbsCard">
         <div class="flex items-center justify-between">
           <h2 class="card-title">Bulbs</h2>
-          <button class="link-danger" id="btnDisconnectAll">Disconnect all</button>
+          <div class="flex items-center gap-4">
+            <button class="link-accent" id="btnConnectAll">Connect all</button>
+            <button class="link-danger" id="btnDisconnectAll">Disconnect all</button>
+          </div>
         </div>
 
         <div class="flex flex-col gap-2" id="deviceList">
@@ -77,13 +81,17 @@
           </button>
           <button class="btn-ghost" id="btnAutoConnect">
             <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.74 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-            Reconnect saved bulbs
+            <span>Reconnect saved bulbs</span>
           </button>
+          <div class="activity hidden" id="activityLine" role="status" aria-live="polite">
+            <span class="spinner" id="activitySpinner" aria-hidden="true"></span>
+            <span id="activityText"></span>
+          </div>
         </div>
       </section>
 
       <!-- Controls -->
-      <section class="card md:col-span-3 flex flex-col gap-5">
+      <section class="card md:col-span-3 flex flex-col gap-5" id="controlsCard">
         <div class="flex items-center justify-between">
           <h2 class="card-title">Controls</h2>
           <div class="segmented segmented-power">
@@ -179,6 +187,7 @@
       <pre class="matrix-logs h-40 overflow-y-auto text-[10px] leading-relaxed p-3 rounded-xl mt-2" id="debugLogs"></pre>
     </details>
 
+    <footer class="text-center text-[10px] text-zinc-600 pt-2" id="appFooter">Reos Lite Control Center</footer>
   </main>
 
   <script type="module" src="app.js"></script>

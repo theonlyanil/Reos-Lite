@@ -7,7 +7,7 @@ import { ReosProtocol, NAME_PREFIX } from './protocol.js';
 const MAX_BACKOFF_MS = 30000;
 const QUICK_RETRIES = 3;
 
-/** @typedef {'connecting'|'connected'|'searching'} BulbStatus */
+/** @typedef {'connecting'|'connected'|'searching'|'disconnected'} BulbStatus */
 
 export class BulbManager {
   /**
@@ -44,6 +44,7 @@ export class BulbManager {
       retries: 0,
       connecting: false,
       removed: false,
+      paused: false,
       timer: null,
       abort: null,
     };
@@ -61,9 +62,12 @@ export class BulbManager {
       this.log('Saved-bulb lookup (getDevices) is unavailable. Use Chrome/Edge over HTTPS; on older versions enable chrome://flags/#enable-web-bluetooth-new-permissions-backend.', 'warn');
       return 0;
     }
+    this.log('Looking up bulbs saved in this browser...', 'info');
     const devices = (await navigator.bluetooth.getDevices()).filter((d) => d.name?.startsWith(NAME_PREFIX));
     this.log(`Found ${devices.length} saved bulb(s).`, devices.length ? 'success' : 'info');
+    if (devices.length) this.log(`Connecting to ${devices.length} saved bulb(s)...`, 'info');
     devices.forEach((d) => this.add(d));
+    this.resumeAll(); // also wake up any bulb the user disconnected earlier
     return devices.length;
   }
 
@@ -85,6 +89,47 @@ export class BulbManager {
     this.bulbs.delete(id);
     this.log(`${forget ? 'Removed' : 'Disconnected'}: ${bulb.name}`, 'info');
     this.onChange();
+  }
+
+  /** Disconnect but keep the bulb in the list (no auto-reconnect until resume). */
+  pause(id) {
+    const bulb = this.bulbs.get(id);
+    if (!bulb || bulb.paused) return;
+    bulb.paused = true;
+    this._cancelWait(bulb);
+    bulb.characteristic = null;
+    bulb.pending = null;
+    bulb.status = 'disconnected';
+    try {
+      if (bulb.device.gatt?.connected) bulb.device.gatt.disconnect();
+    } catch (err) {
+      this.log(`Disconnect error on ${bulb.name}: ${err.message}`, 'warn');
+    }
+    this.log(`Disconnected: ${bulb.name}`, 'info');
+    this.onChange();
+  }
+
+  resume(id) {
+    const bulb = this.bulbs.get(id);
+    if (!bulb || !bulb.paused) return;
+    bulb.paused = false;
+    bulb.retries = 0;
+    this.log(`Connecting to ${bulb.name}...`, 'info');
+    this._connect(bulb);
+  }
+
+  pauseAll() {
+    [...this.bulbs.keys()].forEach((id) => this.pause(id));
+  }
+
+  resumeAll() {
+    [...this.bulbs.keys()].forEach((id) => this.resume(id));
+  }
+
+  get connectingCount() {
+    let n = 0;
+    for (const b of this.bulbs.values()) if (b.status === 'connecting') n++;
+    return n;
   }
 
   removeAll() {
@@ -124,7 +169,7 @@ export class BulbManager {
   }
 
   async _connect(bulb) {
-    if (bulb.removed || bulb.connecting) return;
+    if (bulb.removed || bulb.paused || bulb.connecting) return;
     bulb.connecting = true;
     bulb.status = 'connecting';
     this.onChange();
@@ -132,7 +177,7 @@ export class BulbManager {
       const server = await bulb.device.gatt.connect();
       const service = await server.getPrimaryService(ReosProtocol.SERVICE_UUID);
       bulb.characteristic = await service.getCharacteristic(ReosProtocol.CHARACTERISTIC_UUID);
-      if (bulb.removed) {
+      if (bulb.removed || bulb.paused) {
         server.disconnect();
         return;
       }
@@ -142,8 +187,8 @@ export class BulbManager {
       this.onChange();
     } catch (err) {
       bulb.characteristic = null;
-      if (!bulb.removed) {
-        this.log(`Could not connect to ${bulb.name}: ${err.message}`, 'warn');
+      if (!bulb.removed && !bulb.paused) {
+        this.log(`Could not reach ${bulb.name} (${err.message}). Will keep trying.`, 'warn');
         bulb.status = 'searching';
         this.onChange();
         this._scheduleRetry(bulb);
@@ -154,7 +199,7 @@ export class BulbManager {
   }
 
   _onDrop(bulb) {
-    if (bulb.removed) return;
+    if (bulb.removed || bulb.paused) return;
     bulb.characteristic = null;
     bulb.pending = null;
     bulb.status = 'searching';
@@ -172,7 +217,7 @@ export class BulbManager {
 
   _scheduleRetry(bulb) {
     this._cancelWait(bulb);
-    if (bulb.removed) return;
+    if (bulb.removed || bulb.paused) return;
     const attempt = bulb.retries++;
     const device = bulb.device;
 

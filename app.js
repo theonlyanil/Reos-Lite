@@ -4,11 +4,19 @@
 import { ReosProtocol, applyGamma, NAME_PREFIX } from './protocol.js';
 import { BulbManager } from './bulbs.js';
 import { EFFECTS, EFFECT_IDS } from './effects.js';
+import { VERSION, RELEASE_DATE } from './version.js';
 
 // Active state
 let currentTab = 'rgb'; // 'rgb' or 'white'
 
-const manager = new BulbManager({ log: (m, t) => log(m, t), onChange: () => renderBulbs() });
+const manager = new BulbManager({
+  log: (m, t) => {
+    log(m, t);
+    if (!reconnecting && m.startsWith('Could not reach')) return; // background retries stay in the log, not the status line
+    setActivity(m, { tone: t === 'warn' || t === 'error' ? 'warn' : t === 'success' ? 'ok' : '', busy: manager.connectingCount > 0 });
+  },
+  onChange: () => renderBulbs(),
+});
 
 // DOM Elements
 const compatBanner = document.getElementById('compatBanner');
@@ -17,6 +25,15 @@ const statusDot = document.getElementById('statusDot');
 const activeCountText = document.getElementById('activeCountText');
 const deviceList = document.getElementById('deviceList');
 const listPlaceholder = document.getElementById('listPlaceholder');
+
+const bulbsToggle = document.getElementById('bulbsToggle');
+const bulbsCard = document.getElementById('bulbsCard');
+const controlsCard = document.getElementById('controlsCard');
+const btnConnectAll = document.getElementById('btnConnectAll');
+const activityLine = document.getElementById('activityLine');
+const activityText = document.getElementById('activityText');
+const activitySpinner = document.getElementById('activitySpinner');
+const appFooter = document.getElementById('appFooter');
 
 // Buttons
 const btnPair = document.getElementById('btnPair');
@@ -131,7 +148,7 @@ log('Diagnostics Console ready. Waiting for connections...', 'info');
 const init = () => {
   loadState();
   renderBulbs();
-  autoConnect();
+  autoConnect(false);
 };
 
 // ════════════════════════════════════════════════════════
@@ -218,20 +235,82 @@ btnPair.addEventListener('click', async () => {
   }
 });
 
-btnAutoConnect.addEventListener('click', () => autoConnect());
+// Live activity line under the bulb buttons: always says what is happening right now.
+let activityTimer = null;
+function setActivity(text, { tone = '', busy = false, autoHide = 0 } = {}) {
+  clearTimeout(activityTimer);
+  activityLine.classList.remove('hidden', 'warn', 'ok');
+  if (tone) activityLine.classList.add(tone);
+  activitySpinner.classList.toggle('off', !busy);
+  activityText.textContent = text;
+  if (autoHide) activityTimer = setTimeout(() => activityLine.classList.add('hidden'), autoHide);
+}
 
-async function autoConnect() {
+const btnAutoLabel = btnAutoConnect.querySelector('span');
+let reconnecting = false;
+
+btnAutoConnect.addEventListener('click', () => autoConnect(true));
+
+async function autoConnect(userInitiated = false) {
+  if (reconnecting) return;
+  reconnecting = true;
+  btnAutoConnect.classList.add('loading');
+  btnAutoLabel.textContent = 'Searching...';
+  setActivity('Looking up saved bulbs...', { busy: true });
   try {
-    await manager.restoreSaved();
+    const found = await manager.restoreSaved();
+    if (found === 0 && manager.bulbs.size === 0) {
+      setActivity(
+        navigator.bluetooth?.getDevices
+          ? 'No saved bulbs in this browser yet. Tap "Add new bulb" to pair one.'
+          : 'This browser cannot list saved bulbs. Use a recent Chrome/Edge, then pair again.',
+        { tone: 'warn', autoHide: userInitiated ? 0 : 8000 }
+      );
+      finishReconnect();
+    } else if (manager.connectingCount === 0) {
+      finishReconnect(); // everything already settled
+    }
+    // otherwise renderBulbs() calls finishReconnect() once no bulb is still connecting
   } catch (err) {
     log(`Saved-bulb lookup failed: ${err.message}`, 'error');
+    setActivity(`Lookup failed: ${err.message}`, { tone: 'warn' });
+    finishReconnect();
   }
 }
 
-btnDisconnectAll.addEventListener('click', () => {
-  log('Disconnecting all bulbs...', 'warn');
-  manager.removeAll();
+function finishReconnect() {
+  if (!reconnecting) return;
+  reconnecting = false;
+  btnAutoConnect.classList.remove('loading');
+  btnAutoLabel.textContent = 'Reconnect saved bulbs';
+  const total = manager.bulbs.size;
+  const ok = manager.connectedCount;
+  if (total === 0) return;
+  if (ok === total) setActivity(`All ${total} bulb${total > 1 ? 's' : ''} connected.`, { tone: 'ok', autoHide: 6000 });
+  else setActivity(`${ok} of ${total} connected. The rest aren't in range yet; they will connect automatically when they appear.`, { tone: 'warn' });
+}
+
+btnConnectAll.addEventListener('click', () => {
+  if (manager.bulbs.size === 0) return setActivity('No paired bulbs yet.', { tone: 'warn', autoHide: 4000 });
+  manager.resumeAll();
 });
+
+btnDisconnectAll.addEventListener('click', () => {
+  if (manager.bulbs.size === 0) return;
+  manager.pauseAll();
+  setActivity('All bulbs disconnected. Tap "Connect all" to bring them back.', { autoHide: 6000 });
+});
+
+// Navbar pill toggles the bulbs widget
+function setBulbsOpen(open) {
+  bulbsCard.classList.toggle('hidden', !open);
+  controlsCard.classList.toggle('md:col-span-3', open);
+  controlsCard.classList.toggle('md:col-span-5', !open);
+  bulbsToggle.setAttribute('aria-expanded', String(open));
+  try { localStorage.setItem('reos_bulbs_open', open ? '1' : '0'); } catch (e) { console.warn('Could not persist panel state', e); }
+}
+bulbsToggle.addEventListener('click', () => setBulbsOpen(bulbsCard.classList.contains('hidden')));
+try { if (localStorage.getItem('reos_bulbs_open') === '0') setBulbsOpen(false); } catch (e) { /* storage unavailable */ }
 
 function renderBulbs() {
   const bulbs = [...manager.bulbs.values()];
@@ -239,7 +318,13 @@ function renderBulbs() {
 
   if (bulbs.length === 0) deviceList.appendChild(listPlaceholder);
 
-  const labels = { connected: 'Connected', connecting: 'Connecting...', searching: 'Searching for bulb...' };
+  const statusLabel = (bulb) => {
+    if (bulb.status === 'connected') return 'Connected';
+    if (bulb.status === 'disconnected') return 'Disconnected';
+    if (bulb.status === 'connecting') return 'Connecting...';
+    return bulb.retries > 1 ? `Not in range, waiting... (try ${bulb.retries})` : 'Searching for bulb...';
+  };
+
   for (const bulb of bulbs) {
     const row = document.createElement('div');
     row.className = 'device-row';
@@ -249,7 +334,8 @@ function renderBulbs() {
     left.className = 'flex items-center gap-3 min-w-0';
     const dot = document.createElement('span');
     dot.className = 'dot';
-    if (bulb.status !== 'connected') dot.classList.add('busy');
+    if (bulb.status === 'disconnected') dot.classList.add('off');
+    else if (bulb.status !== 'connected') dot.classList.add('busy');
     const col = document.createElement('div');
     col.className = 'flex flex-col min-w-0';
     const nameEl = document.createElement('span');
@@ -257,25 +343,35 @@ function renderBulbs() {
     nameEl.textContent = bulb.name;
     const statusEl = document.createElement('span');
     statusEl.className = 'text-[10px] text-zinc-500';
-    statusEl.textContent = labels[bulb.status] || bulb.status;
+    statusEl.textContent = statusLabel(bulb);
     col.append(nameEl, statusEl);
     left.append(dot, col);
 
+    const actions = document.createElement('div');
+    actions.className = 'row-actions';
+    const toggle = document.createElement('button');
+    toggle.className = bulb.status === 'disconnected' ? 'mini-action connect' : 'mini-action';
+    toggle.textContent = bulb.status === 'disconnected' ? 'Connect' : bulb.status === 'connected' ? 'Disconnect' : 'Stop';
+    toggle.addEventListener('click', () => (bulb.status === 'disconnected' ? manager.resume(bulb.id) : manager.pause(bulb.id)));
     const remove = document.createElement('button');
     remove.className = 'link-danger';
-    remove.textContent = 'Remove';
+    remove.textContent = 'Forget';
+    remove.title = 'Remove this bulb and revoke the browser permission';
     remove.addEventListener('click', () => manager.remove(bulb.id, { forget: true }));
+    actions.append(toggle, remove);
 
-    row.append(left, remove);
+    row.append(left, actions);
     deviceList.appendChild(row);
   }
 
   const count = manager.connectedCount;
-  activeCountText.textContent = `${count} bulb${count !== 1 ? 's' : ''}`;
+  activeCountText.textContent = bulbs.length && bulbs.length !== count ? `${count}/${bulbs.length} bulbs` : `${count} bulb${count !== 1 ? 's' : ''}`;
   statusDot.className = count > 0
     ? 'w-2 h-2 bg-accent-green rounded-full shadow-lg shadow-accent-green/40 animate-pulse'
     : 'w-2 h-2 bg-zinc-600 rounded-full';
   btnPairLabel.textContent = bulbs.length ? 'Add another bulb' : 'Add new bulb';
+
+  if (reconnecting && manager.connectingCount === 0) finishReconnect();
 }
 
 function broadcastPacket(packet) {
@@ -552,5 +648,8 @@ function stopEffect(announce = false) {
   fxState = null;
   setOrb(nativeColorInput.value);
 }
+
+
+appFooter.textContent = `Reos Lite Control Center · v${VERSION} · released ${new Date(RELEASE_DATE + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}`;
 
 init();
